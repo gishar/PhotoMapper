@@ -1,0 +1,116 @@
+import { Download, ImageIcon, LocateFixed, Trash2, Upload } from 'lucide-react'
+import type { UploadedPhoto } from '../types'
+
+interface PhotoSidebarProps {
+  photos: UploadedPhoto[]
+  isProcessing: boolean
+  onFilesSelected: (files: FileList | null) => void
+  onFitToPhotos: () => void
+  onClearAll: () => void
+  onExportCsv: () => void
+  onSelectPhoto: (photo: UploadedPhoto) => void
+}
+
+export function PhotoSidebar({
+  photos,
+  isProcessing,
+  onFilesSelected,
+  onFitToPhotos,
+  onClearAll,
+  onExportCsv,
+  onSelectPhoto,
+}: PhotoSidebarProps) {
+  const mappedPhotos = photos.filter((photo) => photo.gpsStatus === 'mapped')
+  const withoutGps = photos.filter((photo) => photo.gpsStatus !== 'mapped')
+
+  return (
+    <aside className="sidebar">
+      <header>
+        <div>
+          <h1>Field Photo Mapper</h1>
+          <p>Local EXIF GPS mapping for field visit photos.</p>
+        </div>
+        <label className="upload-button">
+          <Upload size={16} />
+          Upload Photos
+          <input
+            type="file"
+            accept="image/jpeg,image/jpg,image/png,image/heic,image/heif,.jpg,.jpeg,.png,.heic,.heif"
+            multiple
+            onChange={(event) => {
+              onFilesSelected(event.target.files)
+              event.currentTarget.value = ''
+            }}
+          />
+        </label>
+      </header>
+
+      <div className="toolbar" aria-label="Photo actions">
+        <button type="button" onClick={onFitToPhotos} disabled={mappedPhotos.length === 0}>
+          <LocateFixed size={16} />
+          Fit to Photos
+        </button>
+        <button type="button" onClick={onExportCsv} disabled={photos.length === 0}>
+          <Download size={16} />
+          Export CSV
+        </button>
+        <button type="button" onClick={onClearAll} disabled={photos.length === 0}>
+          <Trash2 size={16} />
+          Clear All
+        </button>
+      </div>
+
+      {isProcessing ? <div className="status-message">Reading photo metadata...</div> : null}
+
+      <section className="photo-section">
+        <h2>Mapped Photos ({mappedPhotos.length})</h2>
+        <div className="photo-list">
+          {mappedPhotos.length === 0 ? <p className="empty-state">Upload photos with GPS metadata to map them.</p> : null}
+          {mappedPhotos.map((photo) => (
+            <PhotoListItem key={photo.id} photo={photo} onSelectPhoto={onSelectPhoto} />
+          ))}
+        </div>
+      </section>
+
+      <section className="photo-section">
+        <h2>Photos without GPS ({withoutGps.length})</h2>
+        <div className="photo-list">
+          {withoutGps.length === 0 ? <p className="empty-state">No unmapped photos yet.</p> : null}
+          {withoutGps.map((photo) => (
+            <PhotoListItem key={photo.id} photo={photo} onSelectPhoto={onSelectPhoto} />
+          ))}
+        </div>
+      </section>
+    </aside>
+  )
+}
+
+interface PhotoListItemProps {
+  photo: UploadedPhoto
+  onSelectPhoto: (photo: UploadedPhoto) => void
+}
+
+function PhotoListItem({ photo, onSelectPhoto }: PhotoListItemProps) {
+  const hasGps = photo.latitude !== null && photo.longitude !== null
+
+  return (
+    <button type="button" className="photo-list-item" onClick={() => onSelectPhoto(photo)} disabled={!hasGps}>
+      {photo.previewUrl ? (
+        <img src={photo.previewUrl} alt="" />
+      ) : (
+        <div className="list-thumb-placeholder" title={photo.previewUnavailableReason ?? undefined}>
+          {photo.isHeic ? 'HEIC' : <ImageIcon size={18} />}
+        </div>
+      )}
+      <span>
+        <strong>{photo.fileName}</strong>
+        <small className={`preview-status preview-status-${photo.previewStatus}`}>{photo.previewMessage}</small>
+        <small>
+          {hasGps
+            ? `${photo.latitude!.toFixed(6)}, ${photo.longitude!.toFixed(6)}`
+            : photo.error ?? 'GPS metadata not found'}
+        </small>
+      </span>
+    </button>
+  )
+}
