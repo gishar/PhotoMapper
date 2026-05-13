@@ -82,6 +82,12 @@ function App() {
           fitRequest={fitRequest}
           onEnlarge={setEnlargedPhoto}
         />
+        {isProcessing ? (
+          <div className="map-processing-banner" role="status" aria-live="polite">
+            Reading photo details. Please wait. Large files and HEIC/HEIF photos may take longer because the app reads
+            GPS metadata and prepares previews locally in your browser.
+          </div>
+        ) : null}
         {mappedPhotos.length === 0 ? (
           <div className="map-empty-note">Upload geotagged field photos to place exact EXIF points on the map.</div>
         ) : null}

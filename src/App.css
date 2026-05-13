@@ -246,6 +246,24 @@ button:disabled {
   box-shadow: 0 10px 25px rgba(30, 42, 54, 0.12);
 }
 
+.map-processing-banner {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  z-index: 650;
+  transform: translateX(-50%);
+  width: min(760px, calc(100% - 32px));
+  padding: 12px 16px;
+  border: 1px solid #b7c8d7;
+  border-radius: 6px;
+  background: rgba(245, 250, 255, 0.96);
+  color: #21384a;
+  font-size: 14px;
+  line-height: 1.4;
+  text-align: center;
+  box-shadow: 0 12px 28px rgba(30, 42, 54, 0.16);
+}
+
 .thumbnail-marker,
 .generic-photo-marker {
   background: transparent;
