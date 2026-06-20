@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import L from 'leaflet'
 import { ImageIcon, Maximize2 } from 'lucide-react'
 import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet'
@@ -8,14 +8,24 @@ interface PhotoMapProps {
   photos: UploadedPhoto[]
   selectedPhotoId: string | null
   fitRequest: number
+  onSelectPhoto: (photo: UploadedPhoto) => void
   onEnlarge: (photo: UploadedPhoto) => void
 }
 
-export function PhotoMap({ photos, selectedPhotoId, fitRequest, onEnlarge }: PhotoMapProps) {
+export function PhotoMap({ photos, selectedPhotoId, fitRequest, onSelectPhoto, onEnlarge }: PhotoMapProps) {
+  const markerRefs = useRef(new Map<string, L.Marker>())
   const mappedPhotos = useMemo(
     () => photos.filter((photo) => photo.latitude !== null && photo.longitude !== null),
     [photos],
   )
+
+  useEffect(() => {
+    if (!selectedPhotoId) {
+      return
+    }
+
+    markerRefs.current.get(selectedPhotoId)?.openPopup()
+  }, [mappedPhotos, selectedPhotoId])
 
   return (
     <MapContainer center={[39.5, -98.35]} zoom={4} className="photo-map" scrollWheelZoom>
@@ -25,11 +35,30 @@ export function PhotoMap({ photos, selectedPhotoId, fitRequest, onEnlarge }: Pho
       />
       <MapController mappedPhotos={mappedPhotos} selectedPhotoId={selectedPhotoId} fitRequest={fitRequest} />
       {mappedPhotos.map((photo) => (
-        <Marker key={photo.id} position={[photo.latitude!, photo.longitude!]} icon={createPhotoIcon(photo)}>
+        <Marker
+          key={photo.id}
+          ref={(marker) => {
+            if (marker) {
+              markerRefs.current.set(photo.id, marker)
+            } else {
+              markerRefs.current.delete(photo.id)
+            }
+          }}
+          position={[photo.latitude!, photo.longitude!]}
+          icon={createPhotoIcon(photo)}
+          eventHandlers={{ click: () => onSelectPhoto(photo) }}
+        >
           <Popup minWidth={320} maxWidth={420}>
             <div className="popup-card">
               {photo.previewUrl ? (
-                <img src={photo.previewUrl} alt={photo.fileName} />
+                <button
+                  type="button"
+                  className="popup-preview-button"
+                  aria-label="Enlarge photo"
+                  onClick={() => onEnlarge(photo)}
+                >
+                  <img src={photo.previewUrl} alt={photo.fileName} />
+                </button>
               ) : (
                 <GenericPreview message={photo.previewMessage} />
               )}

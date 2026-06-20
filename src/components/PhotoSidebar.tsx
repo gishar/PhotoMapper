@@ -26,9 +26,12 @@ export function PhotoSidebar({
   return (
     <aside className="sidebar">
       <header>
-        <div>
-          <h1>Field Photo Mapper</h1>
-          <p>Local EXIF GPS mapping for field visit photos.</p>
+        <div className="app-title">
+          <img src="/app-icon.png" alt="Field Photo Mapper icon" />
+          <div>
+            <h1>Field Photo Mapper</h1>
+            <p>Local EXIF GPS mapping for field visit photos.</p>
+          </div>
         </div>
         <label className="upload-button">
           <Upload size={16} />

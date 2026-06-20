@@ -1,13 +1,17 @@
 import { useEffect } from 'react'
-import { ImageIcon, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ImageIcon, X } from 'lucide-react'
 import type { UploadedPhoto } from '../types'
 
 interface ImageModalProps {
   photo: UploadedPhoto | null
+  hasPrevious: boolean
+  hasNext: boolean
+  onPrevious: () => void
+  onNext: () => void
   onClose: () => void
 }
 
-export function ImageModal({ photo, onClose }: ImageModalProps) {
+export function ImageModal({ photo, hasPrevious, hasNext, onPrevious, onNext, onClose }: ImageModalProps) {
   useEffect(() => {
     if (!photo) {
       return
@@ -16,12 +20,18 @@ export function ImageModal({ photo, onClose }: ImageModalProps) {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         onClose()
+      } else if (event.key === 'ArrowLeft' && hasPrevious) {
+        event.preventDefault()
+        onPrevious()
+      } else if (event.key === 'ArrowRight' && hasNext) {
+        event.preventDefault()
+        onNext()
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [onClose, photo])
+  }, [hasNext, hasPrevious, onClose, onNext, onPrevious, photo])
 
   if (!photo) {
     return null
@@ -39,19 +49,39 @@ export function ImageModal({ photo, onClose }: ImageModalProps) {
             <X size={18} />
           </button>
         </div>
-        {photo.previewUrl ? (
-          <img src={photo.previewUrl} alt={photo.fileName} onClick={onClose} />
-        ) : (
-          <button type="button" className="modal-placeholder" onClick={onClose}>
-            <ImageIcon size={36} />
-            <span>{photo.previewMessage}</span>
-            <small>
-              {photo.latitude !== null && photo.longitude !== null
-                ? `${photo.latitude.toFixed(8)}, ${photo.longitude.toFixed(8)}`
-                : 'GPS metadata not found'}
-            </small>
+        <div className="modal-preview">
+          <button
+            type="button"
+            className="modal-nav-button modal-nav-button-previous"
+            aria-label="Previous photo"
+            onClick={onPrevious}
+            disabled={!hasPrevious}
+          >
+            <ChevronLeft size={28} />
           </button>
-        )}
+          {photo.previewUrl ? (
+            <img src={photo.previewUrl} alt={photo.fileName} onClick={onClose} />
+          ) : (
+            <button type="button" className="modal-placeholder" onClick={onClose}>
+              <ImageIcon size={36} />
+              <span>{photo.previewMessage}</span>
+              <small>
+                {photo.latitude !== null && photo.longitude !== null
+                  ? `${photo.latitude.toFixed(8)}, ${photo.longitude.toFixed(8)}`
+                  : 'GPS metadata not found'}
+              </small>
+            </button>
+          )}
+          <button
+            type="button"
+            className="modal-nav-button modal-nav-button-next"
+            aria-label="Next photo"
+            onClick={onNext}
+            disabled={!hasNext}
+          >
+            <ChevronRight size={28} />
+          </button>
+        </div>
       </div>
     </div>
   )

@@ -14,12 +14,36 @@ function App() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [selectedPhotoId, setSelectedPhotoId] = useState<string | null>(null)
   const [fitRequest, setFitRequest] = useState(0)
-  const [enlargedPhoto, setEnlargedPhoto] = useState<UploadedPhoto | null>(null)
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false)
   const photosRef = useRef<UploadedPhoto[]>([])
 
   const mappedPhotos = useMemo(
     () => photos.filter((photo) => photo.latitude !== null && photo.longitude !== null),
     [photos],
+  )
+  const selectedPhotoIndex = selectedPhotoId ? mappedPhotos.findIndex((photo) => photo.id === selectedPhotoId) : -1
+  const previewPhoto = isPreviewOpen && selectedPhotoIndex >= 0 ? mappedPhotos[selectedPhotoIndex] : null
+
+  const selectPhoto = useCallback((photo: UploadedPhoto) => {
+    setSelectedPhotoId(photo.id)
+  }, [])
+
+  const enlargePhoto = useCallback((photo: UploadedPhoto) => {
+    selectPhoto(photo)
+    setIsPreviewOpen(true)
+  }, [selectPhoto])
+
+  const selectMappedPhotoAtIndex = useCallback(
+    (index: number) => {
+      const photo = mappedPhotos[index]
+
+      if (!photo) {
+        return
+      }
+
+      selectPhoto(photo)
+    },
+    [mappedPhotos, selectPhoto],
   )
 
   const handleFilesSelected = useCallback(async (fileList: FileList | null) => {
@@ -47,7 +71,7 @@ function App() {
     photos.forEach((photo) => revokeObjectUrls(photo.objectUrlsToRevoke))
     setPhotos([])
     setSelectedPhotoId(null)
-    setEnlargedPhoto(null)
+    setIsPreviewOpen(false)
   }, [photos])
 
   const handleExportCsv = useCallback(() => {
@@ -73,14 +97,15 @@ function App() {
         onFitToPhotos={() => setFitRequest((request) => request + 1)}
         onClearAll={handleClearAll}
         onExportCsv={handleExportCsv}
-        onSelectPhoto={(photo) => setSelectedPhotoId(photo.id)}
+        onSelectPhoto={selectPhoto}
       />
       <section className="map-panel" aria-label="Mapped field photos">
         <PhotoMap
           photos={photos}
           selectedPhotoId={selectedPhotoId}
           fitRequest={fitRequest}
-          onEnlarge={setEnlargedPhoto}
+          onSelectPhoto={selectPhoto}
+          onEnlarge={enlargePhoto}
         />
         {isProcessing ? (
           <div className="map-processing-banner" role="status" aria-live="polite">
@@ -92,7 +117,14 @@ function App() {
           <div className="map-empty-note">Upload geotagged field photos to place exact EXIF points on the map.</div>
         ) : null}
       </section>
-      <ImageModal photo={enlargedPhoto} onClose={() => setEnlargedPhoto(null)} />
+      <ImageModal
+        photo={previewPhoto}
+        hasPrevious={selectedPhotoIndex > 0}
+        hasNext={selectedPhotoIndex >= 0 && selectedPhotoIndex < mappedPhotos.length - 1}
+        onPrevious={() => selectMappedPhotoAtIndex(selectedPhotoIndex - 1)}
+        onNext={() => selectMappedPhotoAtIndex(selectedPhotoIndex + 1)}
+        onClose={() => setIsPreviewOpen(false)}
+      />
     </main>
   )
 }
