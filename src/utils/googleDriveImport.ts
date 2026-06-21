@@ -18,6 +18,7 @@ interface PickerDocument {
   id: string
   name?: string
   mimeType?: string
+  resourceKey?: string
 }
 
 interface PickerResponse {
@@ -188,7 +189,7 @@ function pickDriveImages(config: GoogleDriveConfig, accessToken: string): Promis
     }
 
     const view = new picker.DocsView(picker.ViewId.DOCS)
-      .setIncludeFolders(false)
+      .setIncludeFolders(true)
       .setMimeTypes(IMAGE_MIME_TYPES.join(','))
       .setSelectFolderEnabled(false)
     const builder = new picker.PickerBuilder()
@@ -216,7 +217,7 @@ function pickDriveImages(config: GoogleDriveConfig, accessToken: string): Promis
 }
 
 async function downloadDriveFile(document: PickerDocument, accessToken: string): Promise<File> {
-  const metadata = await fetchDriveMetadata(document.id, accessToken)
+  const metadata = await fetchDriveMetadata(document, accessToken)
   const mimeType = metadata.mimeType ?? document.mimeType ?? ''
 
   if (!isUsableImage(mimeType)) {
@@ -230,7 +231,7 @@ async function downloadDriveFile(document: PickerDocument, accessToken: string):
   const response = await fetch(
     `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(document.id)}?${params.toString()}`,
     {
-      headers: { Authorization: `Bearer ${accessToken}` },
+      headers: buildDriveHeaders(accessToken, document),
     },
   )
 
@@ -248,15 +249,15 @@ async function downloadDriveFile(document: PickerDocument, accessToken: string):
   })
 }
 
-async function fetchDriveMetadata(fileId: string, accessToken: string): Promise<DriveFileMetadata> {
+async function fetchDriveMetadata(document: PickerDocument, accessToken: string): Promise<DriveFileMetadata> {
   const params = new URLSearchParams({
     fields: 'name,mimeType,modifiedTime',
     supportsAllDrives: 'true',
   })
   const response = await fetch(
-    `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?${params.toString()}`,
+    `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(document.id)}?${params.toString()}`,
     {
-      headers: { Authorization: `Bearer ${accessToken}` },
+      headers: buildDriveHeaders(accessToken, document),
     },
   )
 
@@ -265,6 +266,16 @@ async function fetchDriveMetadata(fileId: string, accessToken: string): Promise<
   }
 
   return response.json() as Promise<DriveFileMetadata>
+}
+
+function buildDriveHeaders(accessToken: string, document: PickerDocument): HeadersInit {
+  const headers: Record<string, string> = { Authorization: `Bearer ${accessToken}` }
+
+  if (document.resourceKey) {
+    headers['X-Goog-Drive-Resource-Keys'] = `${document.id}/${document.resourceKey}`
+  }
+
+  return headers
 }
 
 function isUsableImage(mimeType: string | undefined): boolean {
