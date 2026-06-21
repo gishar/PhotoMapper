@@ -1,6 +1,5 @@
 export type GpsStatus = 'mapped' | 'missing_gps' | 'metadata_error'
 export type PreviewStatus = 'native' | 'converted' | 'failed'
-export type PhotoImportSource = 'computer' | 'google-drive' | 'onedrive' | 'dropbox' | 'box'
 
 export interface UploadedPhoto {
   id: string
