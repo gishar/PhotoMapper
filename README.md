@@ -1,73 +1,81 @@
-# React + TypeScript + Vite
+# Photo Mapper
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Photo Mapper is a simple browser-based tool for mapping field photos that contain GPS metadata.
 
-Currently, two official plugins are available:
+Upload photos from your computer, and the app reads the embedded EXIF GPS information, places the photos on a map, and lets you review each image with its mapped location.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## What it does
 
-## React Compiler
+* Imports local photo files from your computer
+* Reads EXIF GPS metadata from supported image files
+* Maps photos with valid coordinates
+* Separates photos with missing GPS or metadata errors
+* Shows photo previews linked to map locations
+* Supports enlarged photo viewing with previous/next navigation
+* Keeps the map focused on the last photo viewed
+* Exports mapped photo information to CSV
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Why it is useful
 
-## Expanding the ESLint configuration
+Photo Mapper is intended for field visits, site reviews, inspections, and quick visual documentation where photos need to be tied back to their locations.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+It is especially useful when reviewing a batch of field photos and answering basic questions such as:
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+* Where was this photo taken?
+* Which photos have valid GPS metadata?
+* Which photos are missing location data?
+* Can I quickly export the mapped photo list?
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+## Local-first design
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+Photo Mapper is designed around local photo import. Photos are selected from the user’s computer and processed in the browser.
+
+The app does not require cloud import, cloud storage, or a project account.
+
+## Supported photo types
+
+The app supports common image formats, including:
+
+* JPG / JPEG
+* PNG
+* HEIC / HEIF, depending on browser support
+
+GPS mapping depends on whether the photo file contains usable EXIF GPS metadata.
+
+## Running locally
+
+Install dependencies:
+
+```bash
+npm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Start the development server:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm run dev
 ```
+
+Build the app:
+
+```bash
+npm run build
+```
+
+Run lint checks:
+
+```bash
+npm run lint
+```
+
+## Tech stack
+
+* React
+* TypeScript
+* Vite
+* Leaflet / React Leaflet
+* EXIF metadata parsing
+
+## Current focus
+
+The app is intentionally lightweight and focused on local field-photo mapping. Future enhancements may include drag-and-drop upload, folder upload, status filters, KML/GeoJSON export, photo notes, and manual location assignment for photos without GPS.
