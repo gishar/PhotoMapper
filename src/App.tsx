@@ -2,10 +2,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ImageModal } from './components/ImageModal'
 import { PhotoMap } from './components/PhotoMap'
 import { PhotoSidebar } from './components/PhotoSidebar'
-import type { UploadedPhoto } from './types'
+import type { PhotoImportSource, UploadedPhoto } from './types'
 import { buildPhotoCsv, downloadCsv } from './utils/csv'
 import { readExifMetadata } from './utils/exif'
 import { isHeicFile } from './utils/fileTypes'
+import { GoogleDriveImportError, importGoogleDrivePhotos } from './utils/googleDriveImport'
 import { createPreviewImage, revokeObjectUrls } from './utils/preview'
 import './App.css'
 
@@ -15,6 +16,8 @@ function App() {
   const [selectedPhotoId, setSelectedPhotoId] = useState<string | null>(null)
   const [fitRequest, setFitRequest] = useState(0)
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
+  const [importError, setImportError] = useState<string | null>(null)
+  const [isCloudImporting, setIsCloudImporting] = useState(false)
   const photosRef = useRef<UploadedPhoto[]>([])
 
   const mappedPhotos = useMemo(
@@ -46,13 +49,13 @@ function App() {
     [mappedPhotos, selectPhoto],
   )
 
-  const handleFilesSelected = useCallback(async (fileList: FileList | null) => {
-    const files = Array.from(fileList ?? [])
-
+  const importFiles = useCallback(async (files: File[], source: PhotoImportSource) => {
     if (files.length === 0) {
       return
     }
 
+    void source
+    setImportError(null)
     setIsProcessing(true)
 
     try {
@@ -66,6 +69,36 @@ function App() {
       setIsProcessing(false)
     }
   }, [])
+
+  const handleFilesSelected = useCallback(
+    async (fileList: FileList | null) => {
+      await importFiles(Array.from(fileList ?? []), 'computer')
+    },
+    [importFiles],
+  )
+
+  const handleGoogleDriveImport = useCallback(async () => {
+    setImportError(null)
+    setIsCloudImporting(true)
+
+    try {
+      const files = await importGoogleDrivePhotos()
+
+      if (!files) {
+        return
+      }
+
+      await importFiles(files, 'google-drive')
+    } catch (error) {
+      setImportError(
+        error instanceof GoogleDriveImportError || error instanceof Error
+          ? error.message
+          : 'Google Drive import failed.',
+      )
+    } finally {
+      setIsCloudImporting(false)
+    }
+  }, [importFiles])
 
   const handleClearAll = useCallback(() => {
     photos.forEach((photo) => revokeObjectUrls(photo.objectUrlsToRevoke))
@@ -93,11 +126,14 @@ function App() {
       <PhotoSidebar
         photos={photos}
         isProcessing={isProcessing}
+        isCloudImporting={isCloudImporting}
         onFilesSelected={handleFilesSelected}
+        onImportGoogleDrive={handleGoogleDriveImport}
         onFitToPhotos={() => setFitRequest((request) => request + 1)}
         onClearAll={handleClearAll}
         onExportCsv={handleExportCsv}
         onSelectPhoto={selectPhoto}
+        importError={importError}
       />
       <section className="map-panel" aria-label="Mapped field photos">
         <PhotoMap
