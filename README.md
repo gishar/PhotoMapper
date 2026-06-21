@@ -1,27 +1,5 @@
 # React + TypeScript + Vite
 
-## Cloud photo import
-
-Local photo import remains the default path. Cloud imports read selected photos into browser memory as `Blob`/`File`
-objects, then pass them through the same EXIF/GPS and preview pipeline used by local files. Photos are not saved to the
-local drive and are not uploaded to an app server.
-
-### Google Drive setup
-
-Google Drive import uses Google Picker and the Drive API. Configure these Vite environment variables before enabling it:
-
-```env
-VITE_GOOGLE_DRIVE_API_KEY=your_google_api_key
-VITE_GOOGLE_DRIVE_CLIENT_ID=your_google_oauth_client_id
-VITE_GOOGLE_DRIVE_APP_ID=your_google_cloud_project_number
-```
-
-`VITE_GOOGLE_DRIVE_APP_ID` is optional but recommended for Google Picker. The Google Cloud project needs Google Picker
-API access, Drive API access, and an OAuth web client configured for the app origin. The app requests Drive read-only
-access and keeps the OAuth token in memory only.
-
-OneDrive, Dropbox, and Box are planned provider slots and are not implemented yet.
-
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
 Currently, two official plugins are available:

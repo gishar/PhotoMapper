@@ -79,12 +79,6 @@
   font-weight: 650;
 }
 
-.import-actions {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 8px;
-}
-
 .upload-button input {
   position: absolute;
   width: 1px;
@@ -126,12 +120,6 @@ button:disabled {
   background: #eef6fb;
   color: #24475c;
   font-size: 14px;
-}
-
-.status-message-error {
-  border-color: #e0b4b4;
-  background: #fff4f4;
-  color: #7a3030;
 }
 
 .photo-section {
