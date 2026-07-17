@@ -4,6 +4,8 @@ import type { UploadedPhoto } from '../types'
 interface PhotoSidebarProps {
   photos: UploadedPhoto[]
   isProcessing: boolean
+  isDragOver: boolean
+  dropMessage: string | null
   onFilesSelected: (files: FileList | null) => void
   onFitToPhotos: () => void
   onClearAll: () => void
@@ -14,6 +16,8 @@ interface PhotoSidebarProps {
 export function PhotoSidebar({
   photos,
   isProcessing,
+  isDragOver,
+  dropMessage,
   onFilesSelected,
   onFitToPhotos,
   onClearAll,
@@ -33,20 +37,23 @@ export function PhotoSidebar({
             <p>Local EXIF GPS mapping for field visit photos.</p>
           </div>
         </div>
-        <label className="upload-button">
-          <Upload size={16} />
-          Upload Photos
-          <input
-            type="file"
-            accept="image/jpeg,image/jpg,image/png,image/heic,image/heif,.jpg,.jpeg,.png,.heic,.heif"
-            multiple
-            disabled={isProcessing}
-            onChange={(event) => {
-              onFilesSelected(event.target.files)
-              event.currentTarget.value = ''
-            }}
-          />
-        </label>
+        <div className={`drop-upload-panel${isDragOver ? ' drop-upload-panel-active' : ''}`}>
+          <p>Drag photos here or upload photos.</p>
+          <label className="upload-button">
+            <Upload size={16} />
+            Upload Photos
+            <input
+              type="file"
+              accept="image/jpeg,image/jpg,image/png,image/heic,image/heif,.jpg,.jpeg,.png,.heic,.heif"
+              multiple
+              disabled={isProcessing}
+              onChange={(event) => {
+                onFilesSelected(event.target.files)
+                event.currentTarget.value = ''
+              }}
+            />
+          </label>
+        </div>
       </header>
 
       <div className="toolbar" aria-label="Photo actions">
@@ -65,6 +72,11 @@ export function PhotoSidebar({
       </div>
 
       {isProcessing ? <div className="status-message">Reading photo metadata...</div> : null}
+      {dropMessage ? (
+        <div className="status-message" role="status">
+          {dropMessage}
+        </div>
+      ) : null}
 
       <section className="photo-section">
         <h2>Mapped Photos ({mappedPhotos.length})</h2>

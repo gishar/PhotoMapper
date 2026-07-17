@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
 import { ImageModal } from './components/ImageModal'
 import { PhotoMap } from './components/PhotoMap'
 import { PhotoSidebar } from './components/PhotoSidebar'
 import type { UploadedPhoto } from './types'
 import { buildPhotoCsv, downloadCsv } from './utils/csv'
 import { readExifMetadata } from './utils/exif'
-import { isHeicFile } from './utils/fileTypes'
+import { isHeicFile, isSupportedUploadFile } from './utils/fileTypes'
 import { createPreviewImage, revokeObjectUrls } from './utils/preview'
 import './App.css'
 
@@ -15,7 +15,10 @@ function App() {
   const [selectedPhotoId, setSelectedPhotoId] = useState<string | null>(null)
   const [fitRequest, setFitRequest] = useState(0)
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
+  const [isDragOver, setIsDragOver] = useState(false)
+  const [dropMessage, setDropMessage] = useState<string | null>(null)
   const photosRef = useRef<UploadedPhoto[]>([])
+  const dragDepthRef = useRef(0)
 
   const mappedPhotos = useMemo(
     () => photos.filter((photo) => photo.latitude !== null && photo.longitude !== null),
@@ -52,6 +55,7 @@ function App() {
     }
 
     setIsProcessing(true)
+    setDropMessage(null)
 
     try {
       const uploadedPhotos = await Promise.all(files.map(processFile))
@@ -68,6 +72,53 @@ function App() {
   const handleFilesSelected = useCallback(
     async (fileList: FileList | null) => {
       await importFiles(Array.from(fileList ?? []))
+    },
+    [importFiles],
+  )
+
+  const handleDragEnter = useCallback((event: DragEvent<HTMLElement>) => {
+    event.preventDefault()
+
+    if (!event.dataTransfer.types.includes('Files')) {
+      return
+    }
+
+    dragDepthRef.current += 1
+    setIsDragOver(true)
+  }, [])
+
+  const handleDragOver = useCallback((event: DragEvent<HTMLElement>) => {
+    event.preventDefault()
+
+    if (event.dataTransfer.types.includes('Files')) {
+      event.dataTransfer.dropEffect = 'copy'
+      setIsDragOver(true)
+    }
+  }, [])
+
+  const handleDragLeave = useCallback((event: DragEvent<HTMLElement>) => {
+    event.preventDefault()
+    dragDepthRef.current = Math.max(0, dragDepthRef.current - 1)
+
+    if (dragDepthRef.current === 0) {
+      setIsDragOver(false)
+    }
+  }, [])
+
+  const handleDrop = useCallback(
+    async (event: DragEvent<HTMLElement>) => {
+      event.preventDefault()
+      dragDepthRef.current = 0
+      setIsDragOver(false)
+
+      const files = Array.from(event.dataTransfer.files).filter(isSupportedUploadFile)
+
+      if (files.length === 0) {
+        setDropMessage('Drop JPG, PNG, HEIC, or HEIF photos to import.')
+        return
+      }
+
+      await importFiles(files)
     },
     [importFiles],
   )
@@ -94,10 +145,18 @@ function App() {
   }, [])
 
   return (
-    <main className="app-shell">
+    <main
+      className={`app-shell${isDragOver ? ' app-shell-drag-over' : ''}`}
+      onDragEnter={handleDragEnter}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
       <PhotoSidebar
         photos={photos}
         isProcessing={isProcessing}
+        isDragOver={isDragOver}
+        dropMessage={dropMessage}
         onFilesSelected={handleFilesSelected}
         onFitToPhotos={() => setFitRequest((request) => request + 1)}
         onClearAll={handleClearAll}
