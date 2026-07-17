@@ -5,6 +5,8 @@ const HEIC_EXTENSIONS = ['.heic', '.heif']
 const HEIC_MIME_TYPES = ['image/heic', 'image/heif', 'image/heic-sequence', 'image/heif-sequence']
 const BROWSER_DISPLAYABLE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp', '.gif']
 const BROWSER_DISPLAYABLE_MIME_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif']
+const SUPPORTED_UPLOAD_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.heic', '.heif']
+const SUPPORTED_UPLOAD_MIME_TYPES = ['image/jpeg', 'image/jpg', 'image/png', ...HEIC_MIME_TYPES]
 
 export function isHeicFile(file: File): boolean {
   const fileName = file.name.toLowerCase()
@@ -20,5 +22,15 @@ export function isBrowserDisplayableImage(file: File): boolean {
   return (
     BROWSER_DISPLAYABLE_EXTENSIONS.some((extension) => fileName.endsWith(extension)) ||
     BROWSER_DISPLAYABLE_MIME_TYPES.includes(mimeType)
+  )
+}
+
+export function isSupportedUploadFile(file: File): boolean {
+  const fileName = file.name.toLowerCase()
+  const mimeType = file.type.toLowerCase()
+
+  return (
+    SUPPORTED_UPLOAD_EXTENSIONS.some((extension) => fileName.endsWith(extension)) ||
+    SUPPORTED_UPLOAD_MIME_TYPES.includes(mimeType)
   )
 }
