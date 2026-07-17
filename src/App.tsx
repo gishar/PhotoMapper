@@ -71,9 +71,13 @@ function App() {
 
   const handleFilesSelected = useCallback(
     async (fileList: FileList | null) => {
+      if (isProcessing) {
+        return
+      }
+
       await importFiles(Array.from(fileList ?? []))
     },
-    [importFiles],
+    [importFiles, isProcessing],
   )
 
   const handleDragEnter = useCallback((event: DragEvent<HTMLElement>) => {
@@ -111,6 +115,11 @@ function App() {
       dragDepthRef.current = 0
       setIsDragOver(false)
 
+      if (isProcessing) {
+        setDropMessage('Photo import is already in progress.')
+        return
+      }
+
       const files = Array.from(event.dataTransfer.files).filter(isSupportedUploadFile)
 
       if (files.length === 0) {
@@ -120,7 +129,7 @@ function App() {
 
       await importFiles(files)
     },
-    [importFiles],
+    [importFiles, isProcessing],
   )
 
   const handleClearAll = useCallback(() => {
