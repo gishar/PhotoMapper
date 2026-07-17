@@ -84,6 +84,20 @@
   font-weight: 650;
 }
 
+.upload-options {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.folder-upload-button {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 36px;
+  padding: 8px 10px;
+  font-size: 14px;
+}
+
 .drop-upload-panel {
   display: flex;
   flex-direction: column;
@@ -106,7 +120,8 @@
   line-height: 1.35;
 }
 
-.upload-button input {
+.upload-button input,
+.folder-upload-button input {
   position: absolute;
   width: 1px;
   height: 1px;

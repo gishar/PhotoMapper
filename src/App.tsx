@@ -80,6 +80,24 @@ function App() {
     [importFiles, isProcessing],
   )
 
+  const handleFolderSelected = useCallback(
+    async (fileList: FileList | null) => {
+      if (isProcessing) {
+        return
+      }
+
+      const files = Array.from(fileList ?? []).filter(isSupportedUploadFile)
+
+      if (files.length === 0) {
+        setDropMessage('Selected folder did not contain JPG, PNG, HEIC, or HEIF photos.')
+        return
+      }
+
+      await importFiles(files)
+    },
+    [importFiles, isProcessing],
+  )
+
   const handleDragEnter = useCallback((event: DragEvent<HTMLElement>) => {
     event.preventDefault()
 
@@ -167,6 +185,7 @@ function App() {
         isDragOver={isDragOver}
         dropMessage={dropMessage}
         onFilesSelected={handleFilesSelected}
+        onFolderSelected={handleFolderSelected}
         onFitToPhotos={() => setFitRequest((request) => request + 1)}
         onClearAll={handleClearAll}
         onExportCsv={handleExportCsv}

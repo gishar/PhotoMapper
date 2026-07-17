@@ -1,4 +1,4 @@
-import { Download, ImageIcon, LocateFixed, Trash2, Upload } from 'lucide-react'
+import { Download, FolderOpen, ImageIcon, LocateFixed, Trash2, Upload } from 'lucide-react'
 import type { UploadedPhoto } from '../types'
 
 interface PhotoSidebarProps {
@@ -7,6 +7,7 @@ interface PhotoSidebarProps {
   isDragOver: boolean
   dropMessage: string | null
   onFilesSelected: (files: FileList | null) => void
+  onFolderSelected: (files: FileList | null) => void
   onFitToPhotos: () => void
   onClearAll: () => void
   onExportCsv: () => void
@@ -19,6 +20,7 @@ export function PhotoSidebar({
   isDragOver,
   dropMessage,
   onFilesSelected,
+  onFolderSelected,
   onFitToPhotos,
   onClearAll,
   onExportCsv,
@@ -39,20 +41,37 @@ export function PhotoSidebar({
         </div>
         <div className={`drop-upload-panel${isDragOver ? ' drop-upload-panel-active' : ''}`}>
           <p>Drag photos here or upload photos.</p>
-          <label className="upload-button">
-            <Upload size={16} />
-            Upload Photos
-            <input
-              type="file"
-              accept="image/jpeg,image/jpg,image/png,image/heic,image/heif,.jpg,.jpeg,.png,.heic,.heif"
-              multiple
-              disabled={isProcessing}
-              onChange={(event) => {
-                onFilesSelected(event.target.files)
-                event.currentTarget.value = ''
-              }}
-            />
-          </label>
+          <div className="upload-options">
+            <label className="upload-button">
+              <Upload size={16} />
+              Upload Photos
+              <input
+                type="file"
+                accept="image/jpeg,image/jpg,image/png,image/heic,image/heif,.jpg,.jpeg,.png,.heic,.heif"
+                multiple
+                disabled={isProcessing}
+                onChange={(event) => {
+                  onFilesSelected(event.target.files)
+                  event.currentTarget.value = ''
+                }}
+              />
+            </label>
+            <label className="secondary-button folder-upload-button">
+              <FolderOpen size={16} />
+              Select Folder
+              <input
+                type="file"
+                accept="image/jpeg,image/jpg,image/png,image/heic,image/heif,.jpg,.jpeg,.png,.heic,.heif"
+                multiple
+                disabled={isProcessing}
+                ref={(input) => input?.setAttribute('webkitdirectory', '')}
+                onChange={(event) => {
+                  onFolderSelected(event.target.files)
+                  event.currentTarget.value = ''
+                }}
+              />
+            </label>
+          </div>
         </div>
       </header>
 
