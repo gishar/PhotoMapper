@@ -3,6 +3,7 @@ import type { PhotoStatusFilter, UploadedPhoto } from '../types'
 
 interface PhotoSidebarProps {
   photos: UploadedPhoto[]
+  photoNumbers: Map<string, number>
   totalPhotoCount: number
   totalMappedPhotoCount: number
   isProcessing: boolean
@@ -20,6 +21,7 @@ interface PhotoSidebarProps {
 
 export function PhotoSidebar({
   photos,
+  photoNumbers,
   totalPhotoCount,
   totalMappedPhotoCount,
   isProcessing,
@@ -34,8 +36,9 @@ export function PhotoSidebar({
   onExportCsv,
   onSelectPhoto,
 }: PhotoSidebarProps) {
-  const mappedPhotos = photos.filter(hasUsableCoordinates)
-  const withoutGps = photos.filter((photo) => !hasUsableCoordinates(photo))
+  const mappedPhotos = photos.filter((photo) => photo.gpsStatus === 'mapped' && hasUsableCoordinates(photo))
+  const withoutGps = photos.filter((photo) => photo.gpsStatus === 'missing_gps')
+  const metadataErrors = photos.filter((photo) => photo.gpsStatus === 'metadata_error' || Boolean(photo.error))
   const visiblePhotoCount = photos.length
 
   return (
@@ -136,7 +139,12 @@ export function PhotoSidebar({
             <div className="photo-list">
               {mappedPhotos.length === 0 ? <p className="empty-state">No mapped photos match this filter.</p> : null}
               {mappedPhotos.map((photo) => (
-                <PhotoListItem key={photo.id} photo={photo} onSelectPhoto={onSelectPhoto} />
+                <PhotoListItem
+                  key={photo.id}
+                  photo={photo}
+                  photoNumber={photoNumbers.get(photo.id) ?? 0}
+                  onSelectPhoto={onSelectPhoto}
+                />
               ))}
             </div>
           </section>
@@ -148,7 +156,29 @@ export function PhotoSidebar({
                 <p className="empty-state">No photos without GPS match this filter.</p>
               ) : null}
               {withoutGps.map((photo) => (
-                <PhotoListItem key={photo.id} photo={photo} onSelectPhoto={onSelectPhoto} />
+                <PhotoListItem
+                  key={photo.id}
+                  photo={photo}
+                  photoNumber={photoNumbers.get(photo.id) ?? 0}
+                  onSelectPhoto={onSelectPhoto}
+                />
+              ))}
+            </div>
+          </section>
+
+          <section className="photo-section">
+            <h2>Metadata Errors ({metadataErrors.length})</h2>
+            <div className="photo-list">
+              {metadataErrors.length === 0 ? (
+                <p className="empty-state">No metadata errors match this filter.</p>
+              ) : null}
+              {metadataErrors.map((photo) => (
+                <PhotoListItem
+                  key={photo.id}
+                  photo={photo}
+                  photoNumber={photoNumbers.get(photo.id) ?? 0}
+                  onSelectPhoto={onSelectPhoto}
+                />
               ))}
             </div>
           </section>
@@ -184,21 +214,27 @@ function getFilterEmptyMessage(filter: PhotoStatusFilter, totalPhotoCount: numbe
 
 interface PhotoListItemProps {
   photo: UploadedPhoto
+  photoNumber: number
   onSelectPhoto: (photo: UploadedPhoto) => void
 }
 
-function PhotoListItem({ photo, onSelectPhoto }: PhotoListItemProps) {
+function PhotoListItem({ photo, photoNumber, onSelectPhoto }: PhotoListItemProps) {
   const hasGps = photo.latitude !== null && photo.longitude !== null
 
   return (
     <button type="button" className="photo-list-item" onClick={() => onSelectPhoto(photo)} disabled={!hasGps}>
-      {photo.previewUrl ? (
-        <img src={photo.previewUrl} alt="" />
-      ) : (
-        <div className="list-thumb-placeholder" title={photo.previewUnavailableReason ?? undefined}>
-          {photo.isHeic ? 'HEIC' : <ImageIcon size={18} />}
-        </div>
-      )}
+      <span className="photo-thumb-wrap">
+        <span className="photo-number-badge" aria-label={`Photo ${photoNumber}`}>
+          {photoNumber}
+        </span>
+        {photo.previewUrl ? (
+          <img src={photo.previewUrl} alt="" />
+        ) : (
+          <span className="list-thumb-placeholder" title={photo.previewUnavailableReason ?? undefined}>
+            {photo.isHeic ? 'HEIC' : <ImageIcon size={18} />}
+          </span>
+        )}
+      </span>
       <span>
         <strong>{photo.fileName}</strong>
         <small className={`preview-status preview-status-${photo.previewStatus}`}>{photo.previewMessage}</small>
