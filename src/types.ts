@@ -1,4 +1,5 @@
 export type GpsStatus = 'mapped' | 'missing_gps' | 'metadata_error'
+export type LocationSource = 'exif' | 'manual' | 'none'
 export type PreviewStatus = 'native' | 'converted' | 'failed'
 export type PhotoStatusFilter = 'all' | 'mapped' | 'missing-gps' | 'metadata-errors' | 'selected'
 
@@ -8,6 +9,7 @@ export interface UploadedPhoto {
   isHeic: boolean
   latitude: number | null
   longitude: number | null
+  locationSource: LocationSource
   dateTaken: string | null
   gpsStatus: GpsStatus
   previewUrl: string | null

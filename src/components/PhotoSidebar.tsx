@@ -4,6 +4,7 @@ import type { PhotoStatusFilter, UploadedPhoto } from '../types'
 interface PhotoSidebarProps {
   photos: UploadedPhoto[]
   photoNumbers: Map<string, number>
+  selectedPhotoId: string | null
   totalPhotoCount: number
   totalMappedPhotoCount: number
   isProcessing: boolean
@@ -17,11 +18,14 @@ interface PhotoSidebarProps {
   onClearAll: () => void
   onExportCsv: () => void
   onSelectPhoto: (photo: UploadedPhoto) => void
+  onStartLocationAssignment: (photo: UploadedPhoto) => void
+  onRemoveAssignedLocation: (photo: UploadedPhoto) => void
 }
 
 export function PhotoSidebar({
   photos,
   photoNumbers,
+  selectedPhotoId,
   totalPhotoCount,
   totalMappedPhotoCount,
   isProcessing,
@@ -35,10 +39,14 @@ export function PhotoSidebar({
   onClearAll,
   onExportCsv,
   onSelectPhoto,
+  onStartLocationAssignment,
+  onRemoveAssignedLocation,
 }: PhotoSidebarProps) {
-  const mappedPhotos = photos.filter((photo) => photo.gpsStatus === 'mapped' && hasUsableCoordinates(photo))
-  const withoutGps = photos.filter((photo) => photo.gpsStatus === 'missing_gps')
-  const metadataErrors = photos.filter((photo) => photo.gpsStatus === 'metadata_error' || Boolean(photo.error))
+  const mappedPhotos = photos.filter(hasUsableCoordinates)
+  const withoutGps = photos.filter((photo) => photo.gpsStatus === 'missing_gps' && !hasUsableCoordinates(photo))
+  const metadataErrors = photos.filter(
+    (photo) => (photo.gpsStatus === 'metadata_error' || Boolean(photo.error)) && !hasUsableCoordinates(photo),
+  )
   const visiblePhotoCount = photos.length
 
   return (
@@ -143,7 +151,11 @@ export function PhotoSidebar({
                   key={photo.id}
                   photo={photo}
                   photoNumber={photoNumbers.get(photo.id) ?? 0}
+                  isSelected={photo.id === selectedPhotoId}
+                  isProcessing={isProcessing}
                   onSelectPhoto={onSelectPhoto}
+                  onStartLocationAssignment={onStartLocationAssignment}
+                  onRemoveAssignedLocation={onRemoveAssignedLocation}
                 />
               ))}
             </div>
@@ -160,7 +172,11 @@ export function PhotoSidebar({
                   key={photo.id}
                   photo={photo}
                   photoNumber={photoNumbers.get(photo.id) ?? 0}
+                  isSelected={photo.id === selectedPhotoId}
+                  isProcessing={isProcessing}
                   onSelectPhoto={onSelectPhoto}
+                  onStartLocationAssignment={onStartLocationAssignment}
+                  onRemoveAssignedLocation={onRemoveAssignedLocation}
                 />
               ))}
             </div>
@@ -177,7 +193,11 @@ export function PhotoSidebar({
                   key={photo.id}
                   photo={photo}
                   photoNumber={photoNumbers.get(photo.id) ?? 0}
+                  isSelected={photo.id === selectedPhotoId}
+                  isProcessing={isProcessing}
                   onSelectPhoto={onSelectPhoto}
+                  onStartLocationAssignment={onStartLocationAssignment}
+                  onRemoveAssignedLocation={onRemoveAssignedLocation}
                 />
               ))}
             </div>
@@ -200,6 +220,24 @@ function hasUsableCoordinates(photo: UploadedPhoto): boolean {
   return photo.latitude !== null && photo.longitude !== null
 }
 
+function formatLocationStatuses(photo: UploadedPhoto): string[] {
+  if (photo.locationSource === 'exif') {
+    return ['Status: GPS mapped']
+  }
+
+  if (photo.locationSource === 'manual') {
+    return photo.gpsStatus === 'metadata_error' || photo.error
+      ? ['Status: User assigned', 'Original status: Metadata error']
+      : ['Status: User assigned']
+  }
+
+  if (photo.gpsStatus === 'metadata_error' || photo.error) {
+    return ['Status: Metadata error']
+  }
+
+  return ['Status: Missing GPS']
+}
+
 function getFilterEmptyMessage(filter: PhotoStatusFilter, totalPhotoCount: number): string {
   if (totalPhotoCount === 0) {
     return 'Upload photos to start mapping.'
@@ -215,35 +253,80 @@ function getFilterEmptyMessage(filter: PhotoStatusFilter, totalPhotoCount: numbe
 interface PhotoListItemProps {
   photo: UploadedPhoto
   photoNumber: number
+  isSelected: boolean
+  isProcessing: boolean
   onSelectPhoto: (photo: UploadedPhoto) => void
+  onStartLocationAssignment: (photo: UploadedPhoto) => void
+  onRemoveAssignedLocation: (photo: UploadedPhoto) => void
 }
 
-function PhotoListItem({ photo, photoNumber, onSelectPhoto }: PhotoListItemProps) {
-  const hasGps = photo.latitude !== null && photo.longitude !== null
+function PhotoListItem({
+  photo,
+  photoNumber,
+  isSelected,
+  isProcessing,
+  onSelectPhoto,
+  onStartLocationAssignment,
+  onRemoveAssignedLocation,
+}: PhotoListItemProps) {
+  const hasLocation = hasUsableCoordinates(photo)
+  const canManageLocation = isSelected && photo.locationSource !== 'exif'
 
   return (
-    <button type="button" className="photo-list-item" onClick={() => onSelectPhoto(photo)} disabled={!hasGps}>
-      <span className="photo-thumb-wrap">
-        <span className="photo-number-badge" aria-label={`Photo ${photoNumber}`}>
-          {photoNumber}
-        </span>
-        {photo.previewUrl ? (
-          <img src={photo.previewUrl} alt="" />
-        ) : (
-          <span className="list-thumb-placeholder" title={photo.previewUnavailableReason ?? undefined}>
-            {photo.isHeic ? 'HEIC' : <ImageIcon size={18} />}
+    <div className="photo-list-entry">
+      <button type="button" className="photo-list-item" onClick={() => onSelectPhoto(photo)}>
+        <span className="photo-thumb-wrap">
+          <span className="photo-number-badge" aria-label={`Photo ${photoNumber}`}>
+            {photoNumber}
           </span>
-        )}
-      </span>
-      <span>
-        <strong>{photo.fileName}</strong>
-        <small className={`preview-status preview-status-${photo.previewStatus}`}>{photo.previewMessage}</small>
-        <small>
-          {hasGps
-            ? `${photo.latitude!.toFixed(6)}, ${photo.longitude!.toFixed(6)}`
-            : photo.error ?? 'GPS metadata not found'}
-        </small>
-      </span>
-    </button>
+          {photo.previewUrl ? (
+            <img src={photo.previewUrl} alt="" />
+          ) : (
+            <span className="list-thumb-placeholder" title={photo.previewUnavailableReason ?? undefined}>
+              {photo.isHeic ? 'HEIC' : <ImageIcon size={18} />}
+            </span>
+          )}
+          {photo.locationSource === 'manual' ? (
+            <span className="manual-marker-badge" aria-label="User assigned location">
+              M
+            </span>
+          ) : null}
+        </span>
+        <span>
+          <strong>{photo.fileName}</strong>
+          <small className={`preview-status preview-status-${photo.previewStatus}`}>{photo.previewMessage}</small>
+          {formatLocationStatuses(photo).map((status) => (
+            <small key={status}>{status}</small>
+          ))}
+          <small>
+            {hasLocation
+              ? `${photo.latitude!.toFixed(6)}, ${photo.longitude!.toFixed(6)}`
+              : photo.error ?? 'GPS metadata not found'}
+          </small>
+        </span>
+      </button>
+      {canManageLocation ? (
+        <div className="photo-location-actions">
+          <button
+            type="button"
+            className="photo-location-button"
+            disabled={isProcessing}
+            onClick={() => onStartLocationAssignment(photo)}
+          >
+            Assign / Modify Location
+          </button>
+          {photo.locationSource === 'manual' ? (
+            <button
+              type="button"
+              className="photo-location-button"
+              disabled={isProcessing}
+              onClick={() => onRemoveAssignedLocation(photo)}
+            >
+              Remove Location
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
   )
 }

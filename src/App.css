@@ -242,6 +242,12 @@ button:disabled {
   font-size: 13px;
 }
 
+.photo-list-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
 .photo-list-item {
   display: grid;
   grid-template-columns: 46px minmax(0, 1fr);
@@ -370,6 +376,18 @@ button:disabled {
   min-height: 0;
 }
 
+.photo-map-assigning.leaflet-container,
+.photo-map-assigning .leaflet-tile-pane,
+.photo-map-assigning .leaflet-overlay-pane,
+.photo-map-assigning .leaflet-tile {
+  cursor: crosshair;
+}
+
+.photo-map-assigning .leaflet-control,
+.photo-map-assigning .leaflet-control * {
+  cursor: auto;
+}
+
 .map-empty-note {
   position: absolute;
   top: 16px;
@@ -404,6 +422,53 @@ button:disabled {
   box-shadow: 0 12px 28px rgba(30, 42, 54, 0.16);
 }
 
+.photo-location-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.photo-location-button {
+  align-self: flex-start;
+  min-height: 28px;
+  padding: 5px 9px;
+  border: 1px solid #bac6d3;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #17212b;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.photo-location-button:hover {
+  border-color: #697789;
+  background: #f6f8fa;
+}
+
+.assignment-banner {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  z-index: 700;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transform: translateX(-50%);
+  max-width: min(620px, calc(100% - 32px));
+  padding: 10px 12px;
+  border: 1px solid #9fb8c9;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.96);
+  color: #21384a;
+  font-size: 14px;
+  box-shadow: 0 12px 28px rgba(30, 42, 54, 0.16);
+}
+
+.assignment-banner .secondary-button {
+  flex: 0 0 auto;
+}
+
 .thumbnail-marker,
 .generic-photo-marker {
   background: transparent;
@@ -436,6 +501,12 @@ button:disabled {
   transform: rotate(-45deg);
 }
 
+.manual-location-marker img,
+.manual-location-marker div {
+  border-style: dashed;
+  border-color: #17212b;
+}
+
 .thumbnail-marker .marker-number {
   position: absolute;
   top: -10px;
@@ -447,6 +518,29 @@ button:disabled {
   position: absolute;
   top: -12px;
   left: -12px;
+  transform: rotate(45deg);
+}
+
+.manual-marker-badge {
+  position: absolute;
+  right: -9px;
+  bottom: -9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: 2px solid #ffffff;
+  border-radius: 4px;
+  background: #1f6f63;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  box-shadow: 0 2px 6px rgba(13, 18, 24, 0.24);
+}
+
+.generic-photo-marker .manual-marker-badge {
   transform: rotate(45deg);
 }
 

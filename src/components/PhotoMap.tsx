@@ -1,19 +1,30 @@
 import { useEffect, useMemo, useRef } from 'react'
 import L from 'leaflet'
 import { ImageIcon, Maximize2 } from 'lucide-react'
-import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet'
+import { MapContainer, Marker, Popup, TileLayer, useMap, useMapEvents } from 'react-leaflet'
 import type { UploadedPhoto } from '../types'
 
 interface PhotoMapProps {
   photos: UploadedPhoto[]
   photoNumbers: Map<string, number>
   selectedPhotoId: string | null
+  isAssigningLocation: boolean
   fitRequest: number
   onSelectPhoto: (photo: UploadedPhoto) => void
   onEnlarge: (photo: UploadedPhoto) => void
+  onAssignLocation: (latitude: number, longitude: number) => void
 }
 
-export function PhotoMap({ photos, photoNumbers, selectedPhotoId, fitRequest, onSelectPhoto, onEnlarge }: PhotoMapProps) {
+export function PhotoMap({
+  photos,
+  photoNumbers,
+  selectedPhotoId,
+  isAssigningLocation,
+  fitRequest,
+  onSelectPhoto,
+  onEnlarge,
+  onAssignLocation,
+}: PhotoMapProps) {
   const markerRefs = useRef(new Map<string, L.Marker>())
   const mappedPhotos = useMemo(
     () => photos.filter((photo) => photo.latitude !== null && photo.longitude !== null),
@@ -29,11 +40,17 @@ export function PhotoMap({ photos, photoNumbers, selectedPhotoId, fitRequest, on
   }, [mappedPhotos, selectedPhotoId])
 
   return (
-    <MapContainer center={[39.5, -98.35]} zoom={4} className="photo-map" scrollWheelZoom>
+    <MapContainer
+      center={[39.5, -98.35]}
+      zoom={4}
+      className={`photo-map${isAssigningLocation ? ' photo-map-assigning' : ''}`}
+      scrollWheelZoom
+    >
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
+      <MapAssignmentHandler isAssigningLocation={isAssigningLocation} onAssignLocation={onAssignLocation} />
       <MapController mappedPhotos={mappedPhotos} selectedPhotoId={selectedPhotoId} fitRequest={fitRequest} />
       {mappedPhotos.map((photo) => {
         const photoNumber = photoNumbers.get(photo.id) ?? 0
@@ -50,8 +67,13 @@ export function PhotoMap({ photos, photoNumbers, selectedPhotoId, fitRequest, on
             }}
             position={[photo.latitude!, photo.longitude!]}
             icon={createPhotoIcon(photo, photoNumber)}
-            title={`Photo ${photoNumber}: ${photo.fileName}`}
-            eventHandlers={{ click: () => onSelectPhoto(photo) }}
+            title={`Photo ${photoNumber}: ${photo.fileName} (${formatLocationSource(photo)} location)`}
+            eventHandlers={{
+              click: (event) => {
+                L.DomEvent.stopPropagation(event.originalEvent)
+                onSelectPhoto(photo)
+              },
+            }}
           >
             <Popup minWidth={320} maxWidth={420}>
               <div className="popup-card">
@@ -156,18 +178,58 @@ function MapController({ mappedPhotos, selectedPhotoId, fitRequest }: MapControl
     const photo = mappedPhotos.find((item) => item.id === selectedPhotoId)
 
     if (photo) {
-      map.flyTo([photo.latitude!, photo.longitude!], Math.max(map.getZoom(), 17), { duration: 0.8 })
+      const target = L.latLng(photo.latitude!, photo.longitude!)
+      const currentZoom = map.getZoom()
+
+      if (map.getBounds().pad(0.4).contains(target)) {
+        map.panTo(target, { animate: true, duration: 0.55 })
+        return
+      }
+
+      map.flyTo(target, currentZoom, { duration: 0.8 })
     }
   }, [map, mappedPhotos, selectedPhotoId])
 
   return null
 }
 
+function MapAssignmentHandler({
+  isAssigningLocation,
+  onAssignLocation,
+}: {
+  isAssigningLocation: boolean
+  onAssignLocation: (latitude: number, longitude: number) => void
+}) {
+  const map = useMap()
+
+  useEffect(() => {
+    const container = map.getContainer()
+
+    container.classList.toggle('photo-map-assigning', isAssigningLocation)
+
+    return () => {
+      container.classList.remove('photo-map-assigning')
+    }
+  }, [isAssigningLocation, map])
+
+  useMapEvents({
+    click(event) {
+      if (isAssigningLocation) {
+        onAssignLocation(event.latlng.lat, event.latlng.lng)
+      }
+    },
+  })
+
+  return null
+}
+
 function createPhotoIcon(photo: UploadedPhoto, photoNumber: number): L.DivIcon {
+  const markerClassName = photo.locationSource === 'manual' ? ' manual-location-marker' : ''
+
   if (!photo.previewUrl) {
     return L.divIcon({
-      className: 'generic-photo-marker',
-      html: `<div aria-hidden="true"><span class="marker-number">${photoNumber}</span></div>`,
+      className: `generic-photo-marker${markerClassName}`,
+      html: `<div aria-hidden="true"><span class="marker-number">${photoNumber}</span>${getManualMarkerBadge(photo)}</div>`,
       iconSize: [28, 28],
       iconAnchor: [14, 28],
       popupAnchor: [0, -28],
@@ -175,12 +237,28 @@ function createPhotoIcon(photo: UploadedPhoto, photoNumber: number): L.DivIcon {
   }
 
   return L.divIcon({
-    className: 'thumbnail-marker',
-    html: `<div class="marker-thumb-frame" aria-hidden="true"><img src="${photo.previewUrl}" alt="" /><span class="marker-number">${photoNumber}</span></div>`,
+    className: `thumbnail-marker${markerClassName}`,
+    html: `<div class="marker-thumb-frame" aria-hidden="true"><img src="${photo.previewUrl}" alt="" /><span class="marker-number">${photoNumber}</span>${getManualMarkerBadge(photo)}</div>`,
     iconSize: [38, 38],
     iconAnchor: [19, 38],
     popupAnchor: [0, -38],
   })
+}
+
+function getManualMarkerBadge(photo: UploadedPhoto): string {
+  return photo.locationSource === 'manual' ? '<span class="manual-marker-badge">M</span>' : ''
+}
+
+function formatLocationSource(photo: UploadedPhoto): string {
+  if (photo.locationSource === 'manual') {
+    return 'user assigned'
+  }
+
+  if (photo.locationSource === 'exif') {
+    return 'EXIF'
+  }
+
+  return 'no'
 }
 
 function GenericPreview({ message }: { message: string }) {
