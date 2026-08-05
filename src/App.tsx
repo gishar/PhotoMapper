@@ -187,6 +187,7 @@ function App() {
       <PhotoSidebar
         photos={filteredPhotos}
         totalPhotoCount={photos.length}
+        totalMappedPhotoCount={mappedPhotos.length}
         isProcessing={isProcessing}
         isDragOver={isDragOver}
         dropMessage={dropMessage}
@@ -238,9 +239,9 @@ function matchesPhotoStatusFilter(
     case 'all':
       return true
     case 'mapped':
-      return hasUsableCoordinates(photo)
+      return photo.gpsStatus === 'mapped' && hasUsableCoordinates(photo)
     case 'missing-gps':
-      return !hasUsableCoordinates(photo)
+      return photo.gpsStatus === 'missing_gps'
     case 'metadata-errors':
       return photo.gpsStatus === 'metadata_error' || Boolean(photo.error)
     case 'selected':

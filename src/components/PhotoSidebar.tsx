@@ -4,6 +4,7 @@ import type { PhotoStatusFilter, UploadedPhoto } from '../types'
 interface PhotoSidebarProps {
   photos: UploadedPhoto[]
   totalPhotoCount: number
+  totalMappedPhotoCount: number
   isProcessing: boolean
   isDragOver: boolean
   dropMessage: string | null
@@ -20,6 +21,7 @@ interface PhotoSidebarProps {
 export function PhotoSidebar({
   photos,
   totalPhotoCount,
+  totalMappedPhotoCount,
   isProcessing,
   isDragOver,
   dropMessage,
@@ -83,15 +85,15 @@ export function PhotoSidebar({
       </header>
 
       <div className="toolbar" aria-label="Photo actions">
-        <button type="button" onClick={onFitToPhotos} disabled={mappedPhotos.length === 0}>
+        <button type="button" onClick={onFitToPhotos} disabled={totalMappedPhotoCount === 0}>
           <LocateFixed size={16} />
           Fit to Photos
         </button>
-        <button type="button" onClick={onExportCsv} disabled={photos.length === 0}>
+        <button type="button" onClick={onExportCsv} disabled={totalPhotoCount === 0}>
           <Download size={16} />
           Export CSV
         </button>
-        <button type="button" onClick={onClearAll} disabled={photos.length === 0}>
+        <button type="button" onClick={onClearAll} disabled={totalPhotoCount === 0}>
           <Trash2 size={16} />
           Clear All
         </button>
