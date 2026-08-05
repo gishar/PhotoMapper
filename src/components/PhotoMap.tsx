@@ -6,13 +6,14 @@ import type { UploadedPhoto } from '../types'
 
 interface PhotoMapProps {
   photos: UploadedPhoto[]
+  photoNumbers: Map<string, number>
   selectedPhotoId: string | null
   fitRequest: number
   onSelectPhoto: (photo: UploadedPhoto) => void
   onEnlarge: (photo: UploadedPhoto) => void
 }
 
-export function PhotoMap({ photos, selectedPhotoId, fitRequest, onSelectPhoto, onEnlarge }: PhotoMapProps) {
+export function PhotoMap({ photos, photoNumbers, selectedPhotoId, fitRequest, onSelectPhoto, onEnlarge }: PhotoMapProps) {
   const markerRefs = useRef(new Map<string, L.Marker>())
   const mappedPhotos = useMemo(
     () => photos.filter((photo) => photo.latitude !== null && photo.longitude !== null),
@@ -34,68 +35,73 @@ export function PhotoMap({ photos, selectedPhotoId, fitRequest, onSelectPhoto, o
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
       <MapController mappedPhotos={mappedPhotos} selectedPhotoId={selectedPhotoId} fitRequest={fitRequest} />
-      {mappedPhotos.map((photo) => (
-        <Marker
-          key={photo.id}
-          ref={(marker) => {
-            if (marker) {
-              markerRefs.current.set(photo.id, marker)
-            } else {
-              markerRefs.current.delete(photo.id)
-            }
-          }}
-          position={[photo.latitude!, photo.longitude!]}
-          icon={createPhotoIcon(photo)}
-          eventHandlers={{ click: () => onSelectPhoto(photo) }}
-        >
-          <Popup minWidth={320} maxWidth={420}>
-            <div className="popup-card">
-              {photo.previewUrl ? (
+      {mappedPhotos.map((photo) => {
+        const photoNumber = photoNumbers.get(photo.id) ?? 0
+
+        return (
+          <Marker
+            key={photo.id}
+            ref={(marker) => {
+              if (marker) {
+                markerRefs.current.set(photo.id, marker)
+              } else {
+                markerRefs.current.delete(photo.id)
+              }
+            }}
+            position={[photo.latitude!, photo.longitude!]}
+            icon={createPhotoIcon(photo, photoNumber)}
+            title={`Photo ${photoNumber}: ${photo.fileName}`}
+            eventHandlers={{ click: () => onSelectPhoto(photo) }}
+          >
+            <Popup minWidth={320} maxWidth={420}>
+              <div className="popup-card">
+                {photo.previewUrl ? (
+                  <button
+                    type="button"
+                    className="popup-preview-button"
+                    aria-label="Enlarge photo"
+                    onClick={() => onEnlarge(photo)}
+                  >
+                    <img src={photo.previewUrl} alt={photo.fileName} />
+                  </button>
+                ) : (
+                  <GenericPreview message={photo.previewMessage} />
+                )}
+                <strong>{photo.fileName}</strong>
+                <span className={`preview-status preview-status-${photo.previewStatus}`}>{photo.previewMessage}</span>
+                <dl>
+                  <div>
+                    <dt>Latitude</dt>
+                    <dd>{photo.latitude!.toFixed(8)}</dd>
+                  </div>
+                  <div>
+                    <dt>Longitude</dt>
+                    <dd>{photo.longitude!.toFixed(8)}</dd>
+                  </div>
+                  {photo.dateTaken ? (
+                    <div>
+                      <dt>Date</dt>
+                      <dd>{photo.dateTaken}</dd>
+                    </div>
+                  ) : null}
+                  <div>
+                    <dt>Status</dt>
+                    <dd>{photo.gpsStatus === 'mapped' ? 'GPS mapped' : photo.gpsStatus}</dd>
+                  </div>
+                </dl>
                 <button
                   type="button"
-                  className="popup-preview-button"
-                  aria-label="Enlarge photo"
+                  className="secondary-button"
                   onClick={() => onEnlarge(photo)}
                 >
-                  <img src={photo.previewUrl} alt={photo.fileName} />
+                  <Maximize2 size={15} />
+                  Enlarge
                 </button>
-              ) : (
-                <GenericPreview message={photo.previewMessage} />
-              )}
-              <strong>{photo.fileName}</strong>
-              <span className={`preview-status preview-status-${photo.previewStatus}`}>{photo.previewMessage}</span>
-              <dl>
-                <div>
-                  <dt>Latitude</dt>
-                  <dd>{photo.latitude!.toFixed(8)}</dd>
-                </div>
-                <div>
-                  <dt>Longitude</dt>
-                  <dd>{photo.longitude!.toFixed(8)}</dd>
-                </div>
-                {photo.dateTaken ? (
-                  <div>
-                    <dt>Date</dt>
-                    <dd>{photo.dateTaken}</dd>
-                  </div>
-                ) : null}
-                <div>
-                  <dt>Status</dt>
-                  <dd>{photo.gpsStatus === 'mapped' ? 'GPS mapped' : photo.gpsStatus}</dd>
-                </div>
-              </dl>
-              <button
-                type="button"
-                className="secondary-button"
-                onClick={() => onEnlarge(photo)}
-              >
-                <Maximize2 size={15} />
-                Enlarge
-              </button>
-            </div>
-          </Popup>
-        </Marker>
-      ))}
+              </div>
+            </Popup>
+          </Marker>
+        )
+      })}
     </MapContainer>
   )
 }
@@ -108,6 +114,25 @@ interface MapControllerProps {
 
 function MapController({ mappedPhotos, selectedPhotoId, fitRequest }: MapControllerProps) {
   const map = useMap()
+
+  useEffect(() => {
+    const container = map.getContainer()
+
+    if (typeof ResizeObserver === 'undefined') {
+      map.invalidateSize()
+      return
+    }
+
+    const resizeObserver = new ResizeObserver(() => {
+      map.invalidateSize()
+    })
+
+    resizeObserver.observe(container)
+
+    return () => {
+      resizeObserver.disconnect()
+    }
+  }, [map])
 
   useEffect(() => {
     if (mappedPhotos.length === 0 || fitRequest === 0) {
@@ -138,11 +163,11 @@ function MapController({ mappedPhotos, selectedPhotoId, fitRequest }: MapControl
   return null
 }
 
-function createPhotoIcon(photo: UploadedPhoto): L.DivIcon {
+function createPhotoIcon(photo: UploadedPhoto, photoNumber: number): L.DivIcon {
   if (!photo.previewUrl) {
     return L.divIcon({
       className: 'generic-photo-marker',
-      html: '<div aria-hidden="true"></div>',
+      html: `<div aria-hidden="true"><span class="marker-number">${photoNumber}</span></div>`,
       iconSize: [28, 28],
       iconAnchor: [14, 28],
       popupAnchor: [0, -28],
@@ -151,7 +176,7 @@ function createPhotoIcon(photo: UploadedPhoto): L.DivIcon {
 
   return L.divIcon({
     className: 'thumbnail-marker',
-    html: `<img src="${photo.previewUrl}" alt="" />`,
+    html: `<div class="marker-thumb-frame" aria-hidden="true"><img src="${photo.previewUrl}" alt="" /><span class="marker-number">${photoNumber}</span></div>`,
     iconSize: [38, 38],
     iconAnchor: [19, 38],
     popupAnchor: [0, -38],

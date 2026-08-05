@@ -29,6 +29,10 @@ function App() {
     () => photos.filter((photo) => matchesPhotoStatusFilter(photo, photoStatusFilter, selectedPhotoId)),
     [photoStatusFilter, photos, selectedPhotoId],
   )
+  const photoNumbers = useMemo(
+    () => new Map(photos.map((photo, index) => [photo.id, index + 1])),
+    [photos],
+  )
   const selectedPhotoIndex = selectedPhotoId ? mappedPhotos.findIndex((photo) => photo.id === selectedPhotoId) : -1
   const previewPhoto = isPreviewOpen && selectedPhotoIndex >= 0 ? mappedPhotos[selectedPhotoIndex] : null
 
@@ -186,6 +190,7 @@ function App() {
     >
       <PhotoSidebar
         photos={filteredPhotos}
+        photoNumbers={photoNumbers}
         totalPhotoCount={photos.length}
         totalMappedPhotoCount={mappedPhotos.length}
         isProcessing={isProcessing}
@@ -203,6 +208,7 @@ function App() {
       <section className="map-panel" aria-label="Mapped field photos">
         <PhotoMap
           photos={photos}
+          photoNumbers={photoNumbers}
           selectedPhotoId={selectedPhotoId}
           fitRequest={fitRequest}
           onSelectPhoto={selectPhoto}
