@@ -215,7 +215,9 @@ function MapAssignmentHandler({
   useMapEvents({
     click(event) {
       if (isAssigningLocation) {
-        onAssignLocation(event.latlng.lat, event.latlng.lng)
+        const wrappedLatLng = map.wrapLatLng(event.latlng)
+
+        onAssignLocation(wrappedLatLng.lat, wrappedLatLng.lng)
       }
     },
   })
