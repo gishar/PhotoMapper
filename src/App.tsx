@@ -18,6 +18,7 @@ function App() {
   const [isDragOver, setIsDragOver] = useState(false)
   const [dropMessage, setDropMessage] = useState<string | null>(null)
   const [photoStatusFilter, setPhotoStatusFilter] = useState<PhotoStatusFilter>('all')
+  const [assignmentPhotoId, setAssignmentPhotoId] = useState<string | null>(null)
   const photosRef = useRef<UploadedPhoto[]>([])
   const dragDepthRef = useRef(0)
 
@@ -33,6 +34,7 @@ function App() {
     () => new Map(photos.map((photo, index) => [photo.id, index + 1])),
     [photos],
   )
+  const assignmentPhotoNumber = assignmentPhotoId ? photoNumbers.get(assignmentPhotoId) ?? null : null
   const selectedPhotoIndex = selectedPhotoId ? mappedPhotos.findIndex((photo) => photo.id === selectedPhotoId) : -1
   const previewPhoto = isPreviewOpen && selectedPhotoIndex >= 0 ? mappedPhotos[selectedPhotoIndex] : null
 
@@ -164,15 +166,93 @@ function App() {
     setPhotos([])
     setSelectedPhotoId(null)
     setIsPreviewOpen(false)
+    setAssignmentPhotoId(null)
   }, [photos])
 
   const handleExportCsv = useCallback(() => {
     downloadCsv(buildPhotoCsv(photos), 'field-photo-mapper-export.csv')
   }, [photos])
 
+  const handleStartLocationAssignment = useCallback((photo: UploadedPhoto) => {
+    if (isProcessing || photo.locationSource === 'exif') {
+      return
+    }
+
+    setSelectedPhotoId(photo.id)
+    setAssignmentPhotoId(photo.id)
+  }, [isProcessing])
+
+  const handleCancelLocationAssignment = useCallback(() => {
+    setAssignmentPhotoId(null)
+  }, [])
+
+  const handleAssignLocation = useCallback((latitude: number, longitude: number) => {
+    const photoId = assignmentPhotoId
+
+    if (!photoId || isProcessing) {
+      return
+    }
+
+    setPhotos((currentPhotos) =>
+      currentPhotos.map((photo) =>
+        photo.id === photoId && photo.locationSource !== 'exif'
+          ? { ...photo, latitude, longitude, locationSource: 'manual' }
+          : photo,
+      ),
+    )
+    setSelectedPhotoId(photoId)
+    setAssignmentPhotoId(null)
+  }, [assignmentPhotoId, isProcessing])
+
+  const handleRemoveAssignedLocation = useCallback((photo: UploadedPhoto) => {
+    if (photo.locationSource !== 'manual') {
+      return
+    }
+
+    setPhotos((currentPhotos) =>
+      currentPhotos.map((currentPhoto) =>
+        currentPhoto.id === photo.id
+          ? { ...currentPhoto, latitude: null, longitude: null, locationSource: 'none' }
+          : currentPhoto,
+      ),
+    )
+    setAssignmentPhotoId((currentPhotoId) => (currentPhotoId === photo.id ? null : currentPhotoId))
+  }, [])
+
   useEffect(() => {
     photosRef.current = photos
   }, [photos])
+
+  useEffect(() => {
+    if (!assignmentPhotoId) {
+      return
+    }
+
+    const assignmentPhotoExists = photos.some((photo) => photo.id === assignmentPhotoId)
+    const selectedDifferentPhoto = Boolean(selectedPhotoId && selectedPhotoId !== assignmentPhotoId)
+
+    if (!assignmentPhotoExists || selectedDifferentPhoto || isProcessing) {
+      queueMicrotask(() => setAssignmentPhotoId(null))
+    }
+  }, [assignmentPhotoId, isProcessing, photos, selectedPhotoId])
+
+  useEffect(() => {
+    if (!assignmentPhotoId) {
+      return
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setAssignmentPhotoId(null)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [assignmentPhotoId])
 
   useEffect(() => {
     return () => {
@@ -191,6 +271,7 @@ function App() {
       <PhotoSidebar
         photos={filteredPhotos}
         photoNumbers={photoNumbers}
+        selectedPhotoId={selectedPhotoId}
         totalPhotoCount={photos.length}
         totalMappedPhotoCount={mappedPhotos.length}
         isProcessing={isProcessing}
@@ -204,16 +285,28 @@ function App() {
         onClearAll={handleClearAll}
         onExportCsv={handleExportCsv}
         onSelectPhoto={selectPhoto}
+        onStartLocationAssignment={handleStartLocationAssignment}
+        onRemoveAssignedLocation={handleRemoveAssignedLocation}
       />
       <section className="map-panel" aria-label="Mapped field photos">
         <PhotoMap
           photos={photos}
           photoNumbers={photoNumbers}
           selectedPhotoId={selectedPhotoId}
+          isAssigningLocation={assignmentPhotoId !== null}
           fitRequest={fitRequest}
           onSelectPhoto={selectPhoto}
           onEnlarge={enlargePhoto}
+          onAssignLocation={handleAssignLocation}
         />
+        {assignmentPhotoId && assignmentPhotoNumber ? (
+          <div className="assignment-banner" role="status" aria-live="polite">
+            <span>Click the map to assign a location to Photo {assignmentPhotoNumber}.</span>
+            <button type="button" className="secondary-button" onClick={handleCancelLocationAssignment}>
+              Cancel
+            </button>
+          </div>
+        ) : null}
         {isProcessing ? (
           <div className="map-processing-banner" role="status" aria-live="polite">
             Reading photo details. Please wait. Large files and HEIC/HEIF photos may take longer because the app reads
@@ -245,9 +338,9 @@ function matchesPhotoStatusFilter(
     case 'all':
       return true
     case 'mapped':
-      return photo.gpsStatus === 'mapped' && hasUsableCoordinates(photo)
+      return hasUsableCoordinates(photo)
     case 'missing-gps':
-      return photo.gpsStatus === 'missing_gps'
+      return photo.gpsStatus === 'missing_gps' && !hasUsableCoordinates(photo)
     case 'metadata-errors':
       return photo.gpsStatus === 'metadata_error' || Boolean(photo.error)
     case 'selected':
@@ -288,6 +381,7 @@ async function processFile(file: File): Promise<UploadedPhoto> {
     isHeic,
     latitude: metadata.latitude,
     longitude: metadata.longitude,
+    locationSource: hasGps ? 'exif' : 'none',
     dateTaken: metadata.dateTaken,
     gpsStatus: hasGps ? 'mapped' : metadataResult.status === 'rejected' ? 'metadata_error' : 'missing_gps',
     previewUrl: preview.previewUrl,

@@ -2,7 +2,7 @@ import type { UploadedPhoto } from '../types'
 
 export function buildPhotoCsv(photos: UploadedPhoto[]): string {
   const rows = [
-    ['file_name', 'latitude', 'longitude', 'date_taken', 'gps_status', 'notes'],
+    ['file_name', 'latitude', 'longitude', 'date_taken', 'gps_status', 'notes', 'location_source'],
     ...photos.map((photo) => [
       photo.fileName,
       formatCoordinate(photo.latitude),
@@ -10,6 +10,7 @@ export function buildPhotoCsv(photos: UploadedPhoto[]): string {
       photo.dateTaken ?? '',
       photo.gpsStatus,
       '',
+      formatLocationSource(photo),
     ]),
   ]
 
@@ -30,6 +31,18 @@ export function downloadCsv(csv: string, fileName: string): void {
 
 function formatCoordinate(value: number | null): string {
   return typeof value === 'number' ? value.toFixed(8) : ''
+}
+
+function formatLocationSource(photo: UploadedPhoto): string {
+  if (photo.locationSource === 'exif') {
+    return 'EXIF'
+  }
+
+  if (photo.locationSource === 'manual') {
+    return 'User assigned'
+  }
+
+  return 'None'
 }
 
 function escapeCsvCell(value: string): string {
