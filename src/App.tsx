@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } fro
 import { ImageModal } from './components/ImageModal'
 import { PhotoMap } from './components/PhotoMap'
 import { PhotoSidebar } from './components/PhotoSidebar'
-import type { UploadedPhoto } from './types'
+import type { PhotoStatusFilter, UploadedPhoto } from './types'
 import { buildPhotoCsv, downloadCsv } from './utils/csv'
 import { readExifMetadata } from './utils/exif'
 import { isHeicFile, isSupportedUploadFile } from './utils/fileTypes'
@@ -17,12 +17,17 @@ function App() {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
   const [isDragOver, setIsDragOver] = useState(false)
   const [dropMessage, setDropMessage] = useState<string | null>(null)
+  const [photoStatusFilter, setPhotoStatusFilter] = useState<PhotoStatusFilter>('all')
   const photosRef = useRef<UploadedPhoto[]>([])
   const dragDepthRef = useRef(0)
 
   const mappedPhotos = useMemo(
     () => photos.filter((photo) => photo.latitude !== null && photo.longitude !== null),
     [photos],
+  )
+  const filteredPhotos = useMemo(
+    () => photos.filter((photo) => matchesPhotoStatusFilter(photo, photoStatusFilter, selectedPhotoId)),
+    [photoStatusFilter, photos, selectedPhotoId],
   )
   const selectedPhotoIndex = selectedPhotoId ? mappedPhotos.findIndex((photo) => photo.id === selectedPhotoId) : -1
   const previewPhoto = isPreviewOpen && selectedPhotoIndex >= 0 ? mappedPhotos[selectedPhotoIndex] : null
@@ -180,12 +185,16 @@ function App() {
       onDrop={handleDrop}
     >
       <PhotoSidebar
-        photos={photos}
+        photos={filteredPhotos}
+        totalPhotoCount={photos.length}
+        totalMappedPhotoCount={mappedPhotos.length}
         isProcessing={isProcessing}
         isDragOver={isDragOver}
         dropMessage={dropMessage}
+        activeFilter={photoStatusFilter}
         onFilesSelected={handleFilesSelected}
         onFolderSelected={handleFolderSelected}
+        onFilterChange={setPhotoStatusFilter}
         onFitToPhotos={() => setFitRequest((request) => request + 1)}
         onClearAll={handleClearAll}
         onExportCsv={handleExportCsv}
@@ -219,6 +228,29 @@ function App() {
       />
     </main>
   )
+}
+
+function matchesPhotoStatusFilter(
+  photo: UploadedPhoto,
+  filter: PhotoStatusFilter,
+  selectedPhotoId: string | null,
+): boolean {
+  switch (filter) {
+    case 'all':
+      return true
+    case 'mapped':
+      return photo.gpsStatus === 'mapped' && hasUsableCoordinates(photo)
+    case 'missing-gps':
+      return photo.gpsStatus === 'missing_gps'
+    case 'metadata-errors':
+      return photo.gpsStatus === 'metadata_error' || Boolean(photo.error)
+    case 'selected':
+      return Boolean(selectedPhotoId && photo.id === selectedPhotoId)
+  }
+}
+
+function hasUsableCoordinates(photo: UploadedPhoto): boolean {
+  return photo.latitude !== null && photo.longitude !== null
 }
 
 async function processFile(file: File): Promise<UploadedPhoto> {
