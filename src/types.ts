@@ -1,5 +1,6 @@
 export type GpsStatus = 'mapped' | 'missing_gps' | 'metadata_error'
 export type PreviewStatus = 'native' | 'converted' | 'failed'
+export type PhotoStatusFilter = 'all' | 'mapped' | 'missing-gps' | 'metadata-errors' | 'selected'
 
 export interface UploadedPhoto {
   id: string

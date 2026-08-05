@@ -1,13 +1,16 @@
 import { Download, FolderOpen, ImageIcon, LocateFixed, Trash2, Upload } from 'lucide-react'
-import type { UploadedPhoto } from '../types'
+import type { PhotoStatusFilter, UploadedPhoto } from '../types'
 
 interface PhotoSidebarProps {
   photos: UploadedPhoto[]
+  totalPhotoCount: number
   isProcessing: boolean
   isDragOver: boolean
   dropMessage: string | null
+  activeFilter: PhotoStatusFilter
   onFilesSelected: (files: FileList | null) => void
   onFolderSelected: (files: FileList | null) => void
+  onFilterChange: (filter: PhotoStatusFilter) => void
   onFitToPhotos: () => void
   onClearAll: () => void
   onExportCsv: () => void
@@ -16,18 +19,22 @@ interface PhotoSidebarProps {
 
 export function PhotoSidebar({
   photos,
+  totalPhotoCount,
   isProcessing,
   isDragOver,
   dropMessage,
+  activeFilter,
   onFilesSelected,
   onFolderSelected,
+  onFilterChange,
   onFitToPhotos,
   onClearAll,
   onExportCsv,
   onSelectPhoto,
 }: PhotoSidebarProps) {
-  const mappedPhotos = photos.filter((photo) => photo.gpsStatus === 'mapped')
-  const withoutGps = photos.filter((photo) => photo.gpsStatus !== 'mapped')
+  const mappedPhotos = photos.filter(hasUsableCoordinates)
+  const withoutGps = photos.filter((photo) => !hasUsableCoordinates(photo))
+  const visiblePhotoCount = photos.length
 
   return (
     <aside className="sidebar">
@@ -97,27 +104,80 @@ export function PhotoSidebar({
         </div>
       ) : null}
 
-      <section className="photo-section">
-        <h2>Mapped Photos ({mappedPhotos.length})</h2>
-        <div className="photo-list">
-          {mappedPhotos.length === 0 ? <p className="empty-state">Upload photos with GPS metadata to map them.</p> : null}
-          {mappedPhotos.map((photo) => (
-            <PhotoListItem key={photo.id} photo={photo} onSelectPhoto={onSelectPhoto} />
+      <section className="photo-filter-section" aria-label="Photo status filters">
+        <div className="photo-filter-summary">
+          {visiblePhotoCount === totalPhotoCount
+            ? `${totalPhotoCount} photos imported`
+            : `${visiblePhotoCount} of ${totalPhotoCount} photos shown`}
+        </div>
+        <div className="photo-filters">
+          {PHOTO_FILTER_OPTIONS.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              className={option.value === activeFilter ? 'photo-filter-active' : undefined}
+              aria-pressed={option.value === activeFilter}
+              onClick={() => onFilterChange(option.value)}
+            >
+              {option.label}
+            </button>
           ))}
         </div>
       </section>
 
-      <section className="photo-section">
-        <h2>Photos without GPS ({withoutGps.length})</h2>
-        <div className="photo-list">
-          {withoutGps.length === 0 ? <p className="empty-state">No unmapped photos yet.</p> : null}
-          {withoutGps.map((photo) => (
-            <PhotoListItem key={photo.id} photo={photo} onSelectPhoto={onSelectPhoto} />
-          ))}
-        </div>
-      </section>
+      {visiblePhotoCount === 0 ? (
+        <p className="empty-state">{getFilterEmptyMessage(activeFilter, totalPhotoCount)}</p>
+      ) : (
+        <>
+          <section className="photo-section">
+            <h2>Mapped Photos ({mappedPhotos.length})</h2>
+            <div className="photo-list">
+              {mappedPhotos.length === 0 ? <p className="empty-state">No mapped photos match this filter.</p> : null}
+              {mappedPhotos.map((photo) => (
+                <PhotoListItem key={photo.id} photo={photo} onSelectPhoto={onSelectPhoto} />
+              ))}
+            </div>
+          </section>
+
+          <section className="photo-section">
+            <h2>Photos without GPS ({withoutGps.length})</h2>
+            <div className="photo-list">
+              {withoutGps.length === 0 ? (
+                <p className="empty-state">No photos without GPS match this filter.</p>
+              ) : null}
+              {withoutGps.map((photo) => (
+                <PhotoListItem key={photo.id} photo={photo} onSelectPhoto={onSelectPhoto} />
+              ))}
+            </div>
+          </section>
+        </>
+      )}
     </aside>
   )
+}
+
+const PHOTO_FILTER_OPTIONS: Array<{ value: PhotoStatusFilter; label: string }> = [
+  { value: 'all', label: 'All photos' },
+  { value: 'mapped', label: 'Mapped only' },
+  { value: 'missing-gps', label: 'Missing GPS' },
+  { value: 'metadata-errors', label: 'Metadata errors' },
+  { value: 'selected', label: 'Selected photo' },
+]
+
+function hasUsableCoordinates(photo: UploadedPhoto): boolean {
+  return photo.latitude !== null && photo.longitude !== null
+}
+
+function getFilterEmptyMessage(filter: PhotoStatusFilter, totalPhotoCount: number): string {
+  if (totalPhotoCount === 0) {
+    return 'Upload photos to start mapping.'
+  }
+
+  if (filter === 'selected') {
+    return 'No photo is selected.'
+  }
+
+  return 'No photos match this filter.'
 }
 
 interface PhotoListItemProps {

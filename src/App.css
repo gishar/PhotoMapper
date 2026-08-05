@@ -164,6 +164,47 @@ button:disabled {
   font-size: 14px;
 }
 
+.photo-filter-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.photo-filter-summary {
+  color: #536273;
+  font-size: 13px;
+}
+
+.photo-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.photo-filters button {
+  min-height: 30px;
+  padding: 6px 9px;
+  border: 1px solid #bac6d3;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #17212b;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.photo-filters button:hover {
+  border-color: #697789;
+  background: #f6f8fa;
+}
+
+.photo-filters .photo-filter-active {
+  border-color: #1f6f63;
+  background: #e7f2ef;
+  color: #174f46;
+  font-weight: 700;
+}
+
 .photo-section {
   display: flex;
   flex-direction: column;
