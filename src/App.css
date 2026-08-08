@@ -227,6 +227,45 @@ button:disabled {
   text-transform: uppercase;
 }
 
+.photo-section-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 30px;
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  text-align: left;
+  text-transform: inherit;
+  cursor: pointer;
+}
+
+.photo-section-toggle:hover {
+  color: #1f6f63;
+}
+
+.photo-section-toggle svg {
+  flex: 0 0 auto;
+}
+
+.photo-section-count {
+  margin-left: auto;
+  color: #687789;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.photo-section-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .photo-list {
   display: flex;
   flex-direction: column;
