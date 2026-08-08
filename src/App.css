@@ -148,6 +148,57 @@
   font-size: 14px;
 }
 
+.export-menu {
+  position: relative;
+}
+
+.export-menu-trigger {
+  width: 100%;
+}
+
+.export-menu-list {
+  position: absolute;
+  z-index: 1200;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  display: grid;
+  gap: 4px;
+  min-width: min(100%, 220px);
+  padding: 6px;
+  border: 1px solid #bac6d3;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 14px 28px rgb(23 33 43 / 18%);
+}
+
+.export-menu-list button {
+  display: grid;
+  grid-template-columns: 1fr;
+  justify-items: start;
+  gap: 2px;
+  min-height: 0;
+  padding: 8px 10px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+}
+
+.export-menu-list button:hover,
+.export-menu-list button:focus-visible {
+  background: #f0f5f4;
+}
+
+.export-menu-list strong {
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.export-menu-list span {
+  color: #5f6c7b;
+  font-size: 12px;
+}
+
 .toolbar button:hover:not(:disabled),
 .secondary-button:hover:not(:disabled),
 .icon-button:hover {

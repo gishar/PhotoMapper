@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { ChevronDown, ChevronRight, Download, FolderOpen, ImageIcon, LocateFixed, Trash2, Upload } from 'lucide-react'
 import type { PhotoStatusFilter, UploadedPhoto } from '../types'
 
@@ -11,6 +11,7 @@ interface PhotoSidebarProps {
   isProcessing: boolean
   isDragOver: boolean
   dropMessage: string | null
+  exportMessage: string | null
   activeFilter: PhotoStatusFilter
   onFilesSelected: (files: FileList | null) => void
   onFolderSelected: (files: FileList | null) => void
@@ -18,6 +19,8 @@ interface PhotoSidebarProps {
   onFitToPhotos: () => void
   onClearAll: () => void
   onExportCsv: () => void
+  onExportGeoJson: () => void
+  onExportKml: () => void
   onSelectPhoto: (photo: UploadedPhoto) => void
   onStartLocationAssignment: (photo: UploadedPhoto) => void
   onRemoveAssignedLocation: (photo: UploadedPhoto) => void
@@ -32,6 +35,7 @@ export function PhotoSidebar({
   isProcessing,
   isDragOver,
   dropMessage,
+  exportMessage,
   activeFilter,
   onFilesSelected,
   onFolderSelected,
@@ -39,6 +43,8 @@ export function PhotoSidebar({
   onFitToPhotos,
   onClearAll,
   onExportCsv,
+  onExportGeoJson,
+  onExportKml,
   onSelectPhoto,
   onStartLocationAssignment,
   onRemoveAssignedLocation,
@@ -112,10 +118,12 @@ export function PhotoSidebar({
           <LocateFixed size={16} />
           Fit to Photos
         </button>
-        <button type="button" onClick={onExportCsv} disabled={totalPhotoCount === 0}>
-          <Download size={16} />
-          Export CSV
-        </button>
+        <ExportMenu
+          isDisabled={totalPhotoCount === 0}
+          onExportCsv={onExportCsv}
+          onExportKml={onExportKml}
+          onExportGeoJson={onExportGeoJson}
+        />
         <button type="button" onClick={onClearAll} disabled={totalPhotoCount === 0}>
           <Trash2 size={16} />
           Clear All
@@ -126,6 +134,11 @@ export function PhotoSidebar({
       {dropMessage ? (
         <div className="status-message" role="status">
           {dropMessage}
+        </div>
+      ) : null}
+      {exportMessage ? (
+        <div className="status-message" role="status">
+          {exportMessage}
         </div>
       ) : null}
 
@@ -238,6 +251,93 @@ export function PhotoSidebar({
 }
 
 type PhotoGroupKey = 'mapped' | 'missingGps' | 'metadataErrors'
+
+interface ExportMenuProps {
+  isDisabled: boolean
+  onExportCsv: () => void
+  onExportKml: () => void
+  onExportGeoJson: () => void
+}
+
+function ExportMenu({ isDisabled, onExportCsv, onExportKml, onExportGeoJson }: ExportMenuProps) {
+  const [isOpen, setIsOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+  const firstOptionRef = useRef<HTMLButtonElement>(null)
+
+  const runExport = (exportAction: () => void) => {
+    exportAction()
+    setIsOpen(false)
+  }
+
+  useEffect(() => {
+    if (!isOpen) {
+      return
+    }
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!menuRef.current?.contains(event.target as Node)) {
+        setIsOpen(false)
+      }
+    }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsOpen(false)
+      }
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [isOpen])
+
+  useEffect(() => {
+    if (isOpen) {
+      firstOptionRef.current?.focus()
+    }
+  }, [isOpen])
+
+  return (
+    <div className="export-menu" ref={menuRef}>
+      <button
+        type="button"
+        className="export-menu-trigger"
+        disabled={isDisabled}
+        aria-haspopup="menu"
+        aria-expanded={isOpen}
+        onClick={() => setIsOpen((currentState) => !currentState)}
+      >
+        <Download size={16} />
+        Export
+        <ChevronDown size={16} aria-hidden="true" />
+      </button>
+      {isOpen ? (
+        <div className="export-menu-list" role="menu" aria-label="Export photos">
+          <button
+            type="button"
+            role="menuitem"
+            ref={firstOptionRef}
+            onClick={() => runExport(onExportCsv)}
+          >
+            <strong>CSV</strong>
+            <span>Excel-compatible</span>
+          </button>
+          <button type="button" role="menuitem" onClick={() => runExport(onExportKml)}>
+            <strong>KML</strong>
+            <span>Google Earth</span>
+          </button>
+          <button type="button" role="menuitem" onClick={() => runExport(onExportGeoJson)}>
+            <strong>GeoJSON</strong>
+            <span>GIS/web maps</span>
+          </button>
+        </div>
+      ) : null}
+    </div>
+  )
+}
 
 interface PhotoGroupProps {
   id: PhotoGroupKey

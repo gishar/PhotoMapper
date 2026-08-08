@@ -7,6 +7,13 @@ import { buildPhotoCsv, downloadCsv } from './utils/csv'
 import { readExifMetadata } from './utils/exif'
 import { isHeicFile, isSupportedUploadFile } from './utils/fileTypes'
 import { createPreviewImage, revokeObjectUrls } from './utils/preview'
+import {
+  buildPhotoGeoJson,
+  buildPhotoKml,
+  downloadTextFile,
+  getExportablePhotos,
+  getSkippedPhotoCount,
+} from './utils/spatialExports'
 import './App.css'
 
 function App() {
@@ -17,6 +24,7 @@ function App() {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
   const [isDragOver, setIsDragOver] = useState(false)
   const [dropMessage, setDropMessage] = useState<string | null>(null)
+  const [exportMessage, setExportMessage] = useState<string | null>(null)
   const [photoStatusFilter, setPhotoStatusFilter] = useState<PhotoStatusFilter>('all')
   const [assignmentPhotoId, setAssignmentPhotoId] = useState<string | null>(null)
   const photosRef = useRef<UploadedPhoto[]>([])
@@ -67,6 +75,7 @@ function App() {
 
     setIsProcessing(true)
     setDropMessage(null)
+    setExportMessage(null)
 
     try {
       const uploadedPhotos = await Promise.all(files.map(processFile))
@@ -167,10 +176,47 @@ function App() {
     setSelectedPhotoId(null)
     setIsPreviewOpen(false)
     setAssignmentPhotoId(null)
+    setExportMessage(null)
   }, [photos])
 
   const handleExportCsv = useCallback(() => {
     downloadCsv(buildPhotoCsv(photos), 'field-photo-mapper-export.csv')
+  }, [photos])
+
+  const handleExportGeoJson = useCallback(() => {
+    const skippedCount = getSkippedPhotoCount(photos)
+
+    if (getExportablePhotos(photos).length === 0) {
+      setExportMessage(
+        `No mapped photos to export. ${skippedCount} photos skipped because they have no mapped location.`,
+      )
+      return
+    }
+
+    downloadTextFile(
+      buildPhotoGeoJson(photos),
+      'photo-mapper-export.geojson',
+      'application/geo+json;charset=utf-8',
+    )
+    setExportMessage(getExportMessage('GeoJSON', skippedCount))
+  }, [photos])
+
+  const handleExportKml = useCallback(() => {
+    const skippedCount = getSkippedPhotoCount(photos)
+
+    if (getExportablePhotos(photos).length === 0) {
+      setExportMessage(
+        `No mapped photos to export. ${skippedCount} photos skipped because they have no mapped location.`,
+      )
+      return
+    }
+
+    downloadTextFile(
+      buildPhotoKml(photos),
+      'photo-mapper-export.kml',
+      'application/vnd.google-earth.kml+xml;charset=utf-8',
+    )
+    setExportMessage(getExportMessage('KML', skippedCount))
   }, [photos])
 
   const handleStartLocationAssignment = useCallback((photo: UploadedPhoto) => {
@@ -277,6 +323,7 @@ function App() {
         isProcessing={isProcessing}
         isDragOver={isDragOver}
         dropMessage={dropMessage}
+        exportMessage={exportMessage}
         activeFilter={photoStatusFilter}
         onFilesSelected={handleFilesSelected}
         onFolderSelected={handleFolderSelected}
@@ -284,6 +331,8 @@ function App() {
         onFitToPhotos={() => setFitRequest((request) => request + 1)}
         onClearAll={handleClearAll}
         onExportCsv={handleExportCsv}
+        onExportGeoJson={handleExportGeoJson}
+        onExportKml={handleExportKml}
         onSelectPhoto={selectPhoto}
         onStartLocationAssignment={handleStartLocationAssignment}
         onRemoveAssignedLocation={handleRemoveAssignedLocation}
@@ -350,6 +399,14 @@ function matchesPhotoStatusFilter(
 
 function hasUsableCoordinates(photo: UploadedPhoto): boolean {
   return photo.latitude !== null && photo.longitude !== null
+}
+
+function getExportMessage(format: 'GeoJSON' | 'KML', skippedCount: number): string {
+  if (skippedCount === 0) {
+    return `${format} export downloaded.`
+  }
+
+  return `${format} export downloaded. ${skippedCount} photos skipped because they have no mapped location.`
 }
 
 async function processFile(file: File): Promise<UploadedPhoto> {
