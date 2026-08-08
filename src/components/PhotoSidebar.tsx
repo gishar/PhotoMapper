@@ -1,4 +1,5 @@
-import { Download, FolderOpen, ImageIcon, LocateFixed, Trash2, Upload } from 'lucide-react'
+import { useState, type ReactNode } from 'react'
+import { ChevronDown, ChevronRight, Download, FolderOpen, ImageIcon, LocateFixed, Trash2, Upload } from 'lucide-react'
 import type { PhotoStatusFilter, UploadedPhoto } from '../types'
 
 interface PhotoSidebarProps {
@@ -42,12 +43,23 @@ export function PhotoSidebar({
   onStartLocationAssignment,
   onRemoveAssignedLocation,
 }: PhotoSidebarProps) {
+  const [expandedGroups, setExpandedGroups] = useState<Record<PhotoGroupKey, boolean>>({
+    mapped: true,
+    missingGps: true,
+    metadataErrors: true,
+  })
   const mappedPhotos = photos.filter(hasUsableCoordinates)
   const withoutGps = photos.filter((photo) => photo.gpsStatus === 'missing_gps' && !hasUsableCoordinates(photo))
   const metadataErrors = photos.filter(
     (photo) => (photo.gpsStatus === 'metadata_error' || Boolean(photo.error)) && !hasUsableCoordinates(photo),
   )
   const visiblePhotoCount = photos.length
+  const toggleGroup = (group: PhotoGroupKey) => {
+    setExpandedGroups((currentGroups) => ({
+      ...currentGroups,
+      [group]: !currentGroups[group],
+    }))
+  }
 
   return (
     <aside className="sidebar">
@@ -142,10 +154,16 @@ export function PhotoSidebar({
         <p className="empty-state">{getFilterEmptyMessage(activeFilter, totalPhotoCount)}</p>
       ) : (
         <>
-          <section className="photo-section">
-            <h2>Mapped Photos ({mappedPhotos.length})</h2>
-            <div className="photo-list">
-              {mappedPhotos.length === 0 ? <p className="empty-state">No mapped photos match this filter.</p> : null}
+          <PhotoGroup
+            id="mapped"
+            title="Mapped Photos"
+            count={mappedPhotos.length}
+            isExpanded={expandedGroups.mapped}
+            emptyMessage="No mapped photos match this filter."
+            onToggle={toggleGroup}
+          >
+            {mappedPhotos.length > 0 ? (
+              <div className="photo-list">
               {mappedPhotos.map((photo) => (
                 <PhotoListItem
                   key={photo.id}
@@ -158,15 +176,20 @@ export function PhotoSidebar({
                   onRemoveAssignedLocation={onRemoveAssignedLocation}
                 />
               ))}
-            </div>
-          </section>
+              </div>
+            ) : null}
+          </PhotoGroup>
 
-          <section className="photo-section">
-            <h2>Photos without GPS ({withoutGps.length})</h2>
-            <div className="photo-list">
-              {withoutGps.length === 0 ? (
-                <p className="empty-state">No photos without GPS match this filter.</p>
-              ) : null}
+          <PhotoGroup
+            id="missingGps"
+            title="Photos without GPS"
+            count={withoutGps.length}
+            isExpanded={expandedGroups.missingGps}
+            emptyMessage="No photos without GPS match this filter."
+            onToggle={toggleGroup}
+          >
+            {withoutGps.length > 0 ? (
+              <div className="photo-list">
               {withoutGps.map((photo) => (
                 <PhotoListItem
                   key={photo.id}
@@ -179,15 +202,20 @@ export function PhotoSidebar({
                   onRemoveAssignedLocation={onRemoveAssignedLocation}
                 />
               ))}
-            </div>
-          </section>
+              </div>
+            ) : null}
+          </PhotoGroup>
 
-          <section className="photo-section">
-            <h2>Metadata Errors ({metadataErrors.length})</h2>
-            <div className="photo-list">
-              {metadataErrors.length === 0 ? (
-                <p className="empty-state">No metadata errors match this filter.</p>
-              ) : null}
+          <PhotoGroup
+            id="metadataErrors"
+            title="Metadata Errors"
+            count={metadataErrors.length}
+            isExpanded={expandedGroups.metadataErrors}
+            emptyMessage="No metadata errors match this filter."
+            onToggle={toggleGroup}
+          >
+            {metadataErrors.length > 0 ? (
+              <div className="photo-list">
               {metadataErrors.map((photo) => (
                 <PhotoListItem
                   key={photo.id}
@@ -200,11 +228,51 @@ export function PhotoSidebar({
                   onRemoveAssignedLocation={onRemoveAssignedLocation}
                 />
               ))}
-            </div>
-          </section>
+              </div>
+            ) : null}
+          </PhotoGroup>
         </>
       )}
     </aside>
+  )
+}
+
+type PhotoGroupKey = 'mapped' | 'missingGps' | 'metadataErrors'
+
+interface PhotoGroupProps {
+  id: PhotoGroupKey
+  title: string
+  count: number
+  isExpanded: boolean
+  emptyMessage: string
+  onToggle: (group: PhotoGroupKey) => void
+  children: ReactNode
+}
+
+function PhotoGroup({ id, title, count, isExpanded, emptyMessage, onToggle, children }: PhotoGroupProps) {
+  const listId = `photo-group-${id}`
+
+  return (
+    <section className="photo-section">
+      <h2>
+        <button
+          type="button"
+          className="photo-section-toggle"
+          aria-expanded={isExpanded}
+          aria-controls={listId}
+          onClick={() => onToggle(id)}
+        >
+          {isExpanded ? <ChevronDown size={16} aria-hidden="true" /> : <ChevronRight size={16} aria-hidden="true" />}
+          <span>{title}</span>
+          <span className="photo-section-count">{count}</span>
+        </button>
+      </h2>
+      {isExpanded ? (
+        <div id={listId} className="photo-section-content">
+          {count === 0 ? <p className="empty-state">{emptyMessage}</p> : children}
+        </div>
+      ) : null}
+    </section>
   )
 }
 
