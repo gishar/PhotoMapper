@@ -1,8 +1,17 @@
 import { useEffect, useMemo, useRef } from 'react'
 import L from 'leaflet'
 import { ImageIcon, Maximize2 } from 'lucide-react'
-import { MapContainer, Marker, Popup, TileLayer, useMap, useMapEvents } from 'react-leaflet'
+import { LayersControl, MapContainer, Marker, Popup, TileLayer, useMap, useMapEvents } from 'react-leaflet'
 import type { UploadedPhoto } from '../types'
+
+interface BasemapDefinition {
+  name: string
+  url: string
+  attribution: string
+  subdomains?: string
+  maxNativeZoom?: number
+  isDefault: boolean
+}
 
 interface PhotoMapProps {
   photos: UploadedPhoto[]
@@ -46,10 +55,18 @@ export function PhotoMap({
       className={`photo-map${isAssigningLocation ? ' photo-map-assigning' : ''}`}
       scrollWheelZoom
     >
-      <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
+      <LayersControl position="topright" collapsed>
+        {BASEMAPS.map((basemap) => (
+          <LayersControl.BaseLayer key={basemap.name} name={basemap.name} checked={basemap.isDefault}>
+            <TileLayer
+              attribution={basemap.attribution}
+              url={basemap.url}
+              {...(basemap.subdomains ? { subdomains: basemap.subdomains } : {})}
+              {...(basemap.maxNativeZoom ? { maxNativeZoom: basemap.maxNativeZoom } : {})}
+            />
+          </LayersControl.BaseLayer>
+        ))}
+      </LayersControl>
       <MapAssignmentHandler isAssigningLocation={isAssigningLocation} onAssignLocation={onAssignLocation} />
       <MapController mappedPhotos={mappedPhotos} selectedPhotoId={selectedPhotoId} fitRequest={fitRequest} />
       {mappedPhotos.map((photo) => {
@@ -127,6 +144,26 @@ export function PhotoMap({
     </MapContainer>
   )
 }
+
+const OPENTOPOMAP_ATTRIBUTION =
+  'Map data: &copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> contributors | DEM: <a href="http://viewfinderpanoramas.org">SRTM</a>, <a href="https://sonny.4lima.de/">Sonny</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)'
+
+const BASEMAPS: BasemapDefinition[] = [
+  {
+    name: 'OpenStreetMap',
+    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    subdomains: 'abc',
+    isDefault: true,
+  },
+  {
+    name: 'OpenTopoMap',
+    url: 'https://tile.opentopomap.org/{z}/{x}/{y}.png',
+    attribution: OPENTOPOMAP_ATTRIBUTION,
+    maxNativeZoom: 17,
+    isDefault: false,
+  },
+]
 
 interface MapControllerProps {
   mappedPhotos: UploadedPhoto[]
