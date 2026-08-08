@@ -108,8 +108,12 @@ function hasValidCoordinates(photo: UploadedPhoto): photo is UploadedPhoto & { l
   return (
     typeof photo.latitude === 'number' &&
     Number.isFinite(photo.latitude) &&
+    photo.latitude >= -90 &&
+    photo.latitude <= 90 &&
     typeof photo.longitude === 'number' &&
-    Number.isFinite(photo.longitude)
+    Number.isFinite(photo.longitude) &&
+    photo.longitude >= -180 &&
+    photo.longitude <= 180
   )
 }
 

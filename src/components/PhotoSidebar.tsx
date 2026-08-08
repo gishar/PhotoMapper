@@ -262,11 +262,13 @@ interface ExportMenuProps {
 function ExportMenu({ isDisabled, onExportCsv, onExportKml, onExportGeoJson }: ExportMenuProps) {
   const [isOpen, setIsOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
   const firstOptionRef = useRef<HTMLButtonElement>(null)
 
   const runExport = (exportAction: () => void) => {
     exportAction()
     setIsOpen(false)
+    triggerRef.current?.focus()
   }
 
   useEffect(() => {
@@ -282,6 +284,7 @@ function ExportMenu({ isDisabled, onExportCsv, onExportKml, onExportGeoJson }: E
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         setIsOpen(false)
+        triggerRef.current?.focus()
       }
     }
 
@@ -305,6 +308,7 @@ function ExportMenu({ isDisabled, onExportCsv, onExportKml, onExportGeoJson }: E
       <button
         type="button"
         className="export-menu-trigger"
+        ref={triggerRef}
         disabled={isDisabled}
         aria-haspopup="menu"
         aria-expanded={isOpen}
