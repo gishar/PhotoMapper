@@ -267,11 +267,9 @@ function PhotoGroup({ id, title, count, isExpanded, emptyMessage, onToggle, chil
           <span className="photo-section-count">{count}</span>
         </button>
       </h2>
-      {isExpanded ? (
-        <div id={listId} className="photo-section-content">
-          {count === 0 ? <p className="empty-state">{emptyMessage}</p> : children}
-        </div>
-      ) : null}
+      <div id={listId} className="photo-section-content" hidden={!isExpanded}>
+        {isExpanded ? (count === 0 ? <p className="empty-state">{emptyMessage}</p> : children) : null}
+      </div>
     </section>
   )
 }
