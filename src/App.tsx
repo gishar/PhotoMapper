@@ -34,10 +34,18 @@ function App() {
     () => photos.filter((photo) => photo.latitude !== null && photo.longitude !== null),
     [photos],
   )
-  const filteredPhotos = useMemo(
-    () => photos.filter((photo) => matchesPhotoStatusFilter(photo, photoStatusFilter, selectedPhotoId)),
-    [photoStatusFilter, photos, selectedPhotoId],
+  const filteredPhotosWithoutSelection = useMemo(
+    () =>
+      photoStatusFilter === 'all'
+        ? photos
+        : photos.filter((photo) => matchesPhotoStatusFilter(photo, photoStatusFilter, null)),
+    [photoStatusFilter, photos],
   )
+  const selectedFilteredPhotos = useMemo(
+    () => photos.filter((photo) => matchesPhotoStatusFilter(photo, 'selected', selectedPhotoId)),
+    [photos, selectedPhotoId],
+  )
+  const filteredPhotos = photoStatusFilter === 'selected' ? selectedFilteredPhotos : filteredPhotosWithoutSelection
   const photoNumbers = useMemo(
     () => new Map(photos.map((photo, index) => [photo.id, index + 1])),
     [photos],
@@ -339,7 +347,8 @@ function App() {
       />
       <section className="map-panel" aria-label="Mapped field photos">
         <PhotoMap
-          photos={photos}
+          photos={filteredPhotos}
+          fitPhotos={photos}
           photoNumbers={photoNumbers}
           selectedPhotoId={selectedPhotoId}
           isAssigningLocation={assignmentPhotoId !== null}
