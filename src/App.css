@@ -959,8 +959,11 @@ button:disabled {
   }
 
   .app-footer {
-    bottom: 8px;
+    position: static;
+    justify-self: center;
+    margin: 8px auto 12px;
     max-width: calc(100vw - 16px);
     border-radius: 8px;
+    transform: none;
   }
 }

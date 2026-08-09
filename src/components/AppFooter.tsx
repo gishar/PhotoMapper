@@ -46,7 +46,7 @@ export function AppFooter() {
           return
         }
 
-        setShareMessage('Could not open share.')
+        await copyShareUrl()
       }
 
       return
