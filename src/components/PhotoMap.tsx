@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, type MutableRefObject } from 'react'
 import L from 'leaflet'
-import { ImageIcon, Maximize2 } from 'lucide-react'
-import { LayersControl, MapContainer, Marker, Popup, TileLayer, useMap, useMapEvents } from 'react-leaflet'
+import 'leaflet.markercluster'
+import { LayersControl, MapContainer, TileLayer, useMap, useMapEvents } from 'react-leaflet'
 import type { UploadedPhoto } from '../types'
 
 interface BasemapDefinition {
@@ -15,6 +15,7 @@ interface BasemapDefinition {
 
 interface PhotoMapProps {
   photos: UploadedPhoto[]
+  fitPhotos: UploadedPhoto[]
   photoNumbers: Map<string, number>
   selectedPhotoId: string | null
   isAssigningLocation: boolean
@@ -26,6 +27,7 @@ interface PhotoMapProps {
 
 export function PhotoMap({
   photos,
+  fitPhotos,
   photoNumbers,
   selectedPhotoId,
   isAssigningLocation,
@@ -35,9 +37,14 @@ export function PhotoMap({
   onAssignLocation,
 }: PhotoMapProps) {
   const markerRefs = useRef(new Map<string, L.Marker>())
+  const markerClusterGroupRef = useRef<L.MarkerClusterGroup | null>(null)
   const mappedPhotos = useMemo(
     () => photos.filter((photo) => photo.latitude !== null && photo.longitude !== null),
     [photos],
+  )
+  const fitMappedPhotos = useMemo(
+    () => fitPhotos.filter((photo) => photo.latitude !== null && photo.longitude !== null),
+    [fitPhotos],
   )
 
   useEffect(() => {
@@ -45,7 +52,20 @@ export function PhotoMap({
       return
     }
 
-    markerRefs.current.get(selectedPhotoId)?.openPopup()
+    const marker = markerRefs.current.get(selectedPhotoId)
+
+    if (!marker) {
+      return
+    }
+
+    const clusterGroup = markerClusterGroupRef.current
+
+    if (clusterGroup) {
+      clusterGroup.zoomToShowLayer(marker, () => marker.openPopup())
+      return
+    }
+
+    marker.openPopup()
   }, [mappedPhotos, selectedPhotoId])
 
   return (
@@ -68,79 +88,20 @@ export function PhotoMap({
         ))}
       </LayersControl>
       <MapAssignmentHandler isAssigningLocation={isAssigningLocation} onAssignLocation={onAssignLocation} />
-      <MapController mappedPhotos={mappedPhotos} selectedPhotoId={selectedPhotoId} fitRequest={fitRequest} />
-      {mappedPhotos.map((photo) => {
-        const photoNumber = photoNumbers.get(photo.id) ?? 0
-
-        return (
-          <Marker
-            key={photo.id}
-            ref={(marker) => {
-              if (marker) {
-                markerRefs.current.set(photo.id, marker)
-              } else {
-                markerRefs.current.delete(photo.id)
-              }
-            }}
-            position={[photo.latitude!, photo.longitude!]}
-            icon={createPhotoIcon(photo, photoNumber)}
-            title={`Photo ${photoNumber}: ${photo.fileName} (${formatLocationSource(photo)} location)`}
-            eventHandlers={{
-              click: (event) => {
-                L.DomEvent.stopPropagation(event.originalEvent)
-                onSelectPhoto(photo)
-              },
-            }}
-          >
-            <Popup minWidth={320} maxWidth={420}>
-              <div className="popup-card">
-                {photo.previewUrl ? (
-                  <button
-                    type="button"
-                    className="popup-preview-button"
-                    aria-label="Enlarge photo"
-                    onClick={() => onEnlarge(photo)}
-                  >
-                    <img src={photo.previewUrl} alt={photo.fileName} />
-                  </button>
-                ) : (
-                  <GenericPreview message={photo.previewMessage} />
-                )}
-                <strong>{photo.fileName}</strong>
-                <span className={`preview-status preview-status-${photo.previewStatus}`}>{photo.previewMessage}</span>
-                <dl>
-                  <div>
-                    <dt>Latitude</dt>
-                    <dd>{photo.latitude!.toFixed(8)}</dd>
-                  </div>
-                  <div>
-                    <dt>Longitude</dt>
-                    <dd>{photo.longitude!.toFixed(8)}</dd>
-                  </div>
-                  {photo.dateTaken ? (
-                    <div>
-                      <dt>Date</dt>
-                      <dd>{photo.dateTaken}</dd>
-                    </div>
-                  ) : null}
-                  <div>
-                    <dt>Status</dt>
-                    <dd>{photo.gpsStatus === 'mapped' ? 'GPS mapped' : photo.gpsStatus}</dd>
-                  </div>
-                </dl>
-                <button
-                  type="button"
-                  className="secondary-button"
-                  onClick={() => onEnlarge(photo)}
-                >
-                  <Maximize2 size={15} />
-                  Enlarge
-                </button>
-              </div>
-            </Popup>
-          </Marker>
-        )
-      })}
+      <MapController
+        mappedPhotos={mappedPhotos}
+        fitMappedPhotos={fitMappedPhotos}
+        selectedPhotoId={selectedPhotoId}
+        fitRequest={fitRequest}
+      />
+      <ClusteredPhotoMarkers
+        mappedPhotos={mappedPhotos}
+        markerRefs={markerRefs}
+        markerClusterGroupRef={markerClusterGroupRef}
+        photoNumbers={photoNumbers}
+        onSelectPhoto={onSelectPhoto}
+        onEnlarge={onEnlarge}
+      />
     </MapContainer>
   )
 }
@@ -165,13 +126,78 @@ const BASEMAPS: BasemapDefinition[] = [
   },
 ]
 
+interface ClusteredPhotoMarkersProps {
+  mappedPhotos: UploadedPhoto[]
+  markerRefs: MutableRefObject<Map<string, L.Marker>>
+  markerClusterGroupRef: MutableRefObject<L.MarkerClusterGroup | null>
+  photoNumbers: Map<string, number>
+  onSelectPhoto: (photo: UploadedPhoto) => void
+  onEnlarge: (photo: UploadedPhoto) => void
+}
+
+function ClusteredPhotoMarkers({
+  mappedPhotos,
+  markerRefs,
+  markerClusterGroupRef,
+  photoNumbers,
+  onSelectPhoto,
+  onEnlarge,
+}: ClusteredPhotoMarkersProps) {
+  const map = useMap()
+
+  useEffect(() => {
+    const markerRefMap = markerRefs.current
+
+    markerRefMap.clear()
+
+    const clusterGroup = L.markerClusterGroup({
+      chunkedLoading: true,
+      showCoverageOnHover: false,
+      spiderfyOnMaxZoom: true,
+      zoomToBoundsOnClick: true,
+      spiderfyDistanceMultiplier: 1.35,
+      maxClusterRadius: 54,
+      iconCreateFunction: createClusterIcon,
+    })
+
+    mappedPhotos.forEach((photo) => {
+      const photoNumber = photoNumbers.get(photo.id) ?? 0
+      const marker = L.marker([photo.latitude!, photo.longitude!], {
+        icon: createPhotoIcon(photo, photoNumber),
+        keyboard: true,
+        title: `Photo ${photoNumber}: ${photo.fileName} (${formatLocationSource(photo)} location)`,
+      })
+
+      marker.on('click', () => onSelectPhoto(photo))
+      marker.bindPopup(createPopupContent(photo, onEnlarge), { minWidth: 320, maxWidth: 420 })
+      markerRefMap.set(photo.id, marker)
+      clusterGroup.addLayer(marker)
+    })
+
+    markerClusterGroupRef.current = clusterGroup
+    map.addLayer(clusterGroup)
+
+    return () => {
+      map.removeLayer(clusterGroup)
+      markerRefMap.clear()
+
+      if (markerClusterGroupRef.current === clusterGroup) {
+        markerClusterGroupRef.current = null
+      }
+    }
+  }, [map, mappedPhotos, markerClusterGroupRef, markerRefs, onEnlarge, onSelectPhoto, photoNumbers])
+
+  return null
+}
+
 interface MapControllerProps {
   mappedPhotos: UploadedPhoto[]
+  fitMappedPhotos: UploadedPhoto[]
   selectedPhotoId: string | null
   fitRequest: number
 }
 
-function MapController({ mappedPhotos, selectedPhotoId, fitRequest }: MapControllerProps) {
+function MapController({ mappedPhotos, fitMappedPhotos, selectedPhotoId, fitRequest }: MapControllerProps) {
   const map = useMap()
 
   useEffect(() => {
@@ -194,11 +220,11 @@ function MapController({ mappedPhotos, selectedPhotoId, fitRequest }: MapControl
   }, [map])
 
   useEffect(() => {
-    if (mappedPhotos.length === 0 || fitRequest === 0) {
+    if (fitMappedPhotos.length === 0 || fitRequest === 0) {
       return
     }
 
-    const photoLocations = mappedPhotos.map((photo) => L.latLng(photo.latitude!, photo.longitude!))
+    const photoLocations = fitMappedPhotos.map((photo) => L.latLng(photo.latitude!, photo.longitude!))
 
     if (photoLocations.length === 1) {
       map.setView(photoLocations[0], 18)
@@ -209,7 +235,7 @@ function MapController({ mappedPhotos, selectedPhotoId, fitRequest }: MapControl
       padding: [24, 24],
       maxZoom: 19,
     })
-  }, [fitRequest, map, mappedPhotos])
+  }, [fitMappedPhotos, fitRequest, map])
 
   useEffect(() => {
     const photo = mappedPhotos.find((item) => item.id === selectedPhotoId)
@@ -262,6 +288,90 @@ function MapAssignmentHandler({
   return null
 }
 
+function createClusterIcon(cluster: L.MarkerCluster): L.DivIcon {
+  return L.divIcon({
+    className: 'photo-marker-cluster',
+    html: `<span>${cluster.getChildCount()}</span>`,
+    iconSize: [42, 42],
+    iconAnchor: [21, 21],
+  })
+}
+
+function createPopupContent(photo: UploadedPhoto, onEnlarge: (photo: UploadedPhoto) => void): HTMLElement {
+  const card = document.createElement('div')
+  card.className = 'popup-card'
+
+  if (photo.previewUrl) {
+    const previewButton = document.createElement('button')
+    previewButton.type = 'button'
+    previewButton.className = 'popup-preview-button'
+    previewButton.setAttribute('aria-label', 'Enlarge photo')
+    previewButton.addEventListener('click', () => onEnlarge(photo))
+
+    const image = document.createElement('img')
+    image.src = photo.previewUrl
+    image.alt = photo.fileName
+    previewButton.append(image)
+    card.append(previewButton)
+  } else {
+    const placeholder = document.createElement('div')
+    placeholder.className = 'generic-preview'
+    const placeholderMessage = document.createElement('span')
+    placeholderMessage.textContent = photo.previewMessage
+    placeholder.append(placeholderMessage)
+    card.append(placeholder)
+  }
+
+  const fileName = document.createElement('strong')
+  fileName.textContent = photo.fileName
+  card.append(fileName)
+
+  const previewStatus = document.createElement('span')
+  previewStatus.className = `preview-status preview-status-${photo.previewStatus}`
+  previewStatus.textContent = photo.previewMessage
+  card.append(previewStatus)
+
+  card.append(createPopupDetails(photo))
+
+  const enlargeButton = document.createElement('button')
+  enlargeButton.type = 'button'
+  enlargeButton.className = 'secondary-button'
+  enlargeButton.textContent = 'Enlarge'
+  enlargeButton.addEventListener('click', () => onEnlarge(photo))
+  card.append(enlargeButton)
+
+  return card
+}
+
+function createPopupDetails(photo: UploadedPhoto): HTMLDListElement {
+  const details = document.createElement('dl')
+
+  details.append(
+    createDescriptionRow('Latitude', photo.latitude!.toFixed(8)),
+    createDescriptionRow('Longitude', photo.longitude!.toFixed(8)),
+  )
+
+  if (photo.dateTaken) {
+    details.append(createDescriptionRow('Date', photo.dateTaken))
+  }
+
+  details.append(createDescriptionRow('Status', photo.gpsStatus === 'mapped' ? 'GPS mapped' : photo.gpsStatus))
+
+  return details
+}
+
+function createDescriptionRow(label: string, value: string): HTMLDivElement {
+  const row = document.createElement('div')
+  const term = document.createElement('dt')
+  const description = document.createElement('dd')
+
+  term.textContent = label
+  description.textContent = value
+  row.append(term, description)
+
+  return row
+}
+
 function createPhotoIcon(photo: UploadedPhoto, photoNumber: number): L.DivIcon {
   const markerClassName = photo.locationSource === 'manual' ? ' manual-location-marker' : ''
 
@@ -298,13 +408,4 @@ function formatLocationSource(photo: UploadedPhoto): string {
   }
 
   return 'no'
-}
-
-function GenericPreview({ message }: { message: string }) {
-  return (
-    <div className="generic-preview">
-      <ImageIcon size={28} />
-      <span>{message}</span>
-    </div>
-  )
 }

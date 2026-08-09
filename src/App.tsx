@@ -339,7 +339,8 @@ function App() {
       />
       <section className="map-panel" aria-label="Mapped field photos">
         <PhotoMap
-          photos={photos}
+          photos={filteredPhotos}
+          fitPhotos={photos}
           photoNumbers={photoNumbers}
           selectedPhotoId={selectedPhotoId}
           isAssigningLocation={assignmentPhotoId !== null}

@@ -634,6 +634,31 @@ button:disabled {
   transform: rotate(45deg);
 }
 
+.photo-marker-cluster {
+  border: 0;
+  background: transparent;
+}
+
+.photo-marker-cluster span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border: 3px solid #ffffff;
+  border-radius: 50%;
+  background: #1f6f63;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1;
+  box-shadow: 0 3px 12px rgba(13, 18, 24, 0.32);
+}
+
+.marker-cluster-spider-leg {
+  border-color: #1f6f63;
+}
+
 .popup-card {
   display: flex;
   flex-direction: column;
