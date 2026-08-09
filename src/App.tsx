@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
 import { ImageModal } from './components/ImageModal'
+import { AppFooter } from './components/AppFooter'
 import { PhotoMap } from './components/PhotoMap'
 import { PhotoSidebar } from './components/PhotoSidebar'
 import type { PhotoStatusFilter, UploadedPhoto } from './types'
@@ -383,6 +384,7 @@ function App() {
         onNext={() => selectMappedPhotoAtIndex(selectedPhotoIndex + 1)}
         onClose={() => setIsPreviewOpen(false)}
       />
+      <AppFooter />
     </main>
   )
 }

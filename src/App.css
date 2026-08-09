@@ -12,6 +12,68 @@
   outline-offset: -3px;
 }
 
+.app-footer {
+  position: fixed;
+  bottom: 12px;
+  left: 50%;
+  z-index: 1500;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  max-width: min(680px, calc(100vw - 24px));
+  padding: 6px 10px;
+  border: 1px solid rgba(186, 198, 211, 0.86);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 8px 20px rgba(13, 18, 24, 0.12);
+  color: #536273;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.4;
+  text-align: center;
+  transform: translateX(-50%);
+}
+
+.footer-phrase {
+  white-space: nowrap;
+}
+
+.footer-link,
+.footer-share-button {
+  color: #17212b;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.footer-link:hover,
+.footer-link:focus-visible,
+.footer-share-button:hover,
+.footer-share-button:focus-visible {
+  text-decoration: underline;
+}
+
+.footer-share-button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.footer-separator {
+  margin: 0 6px;
+  color: #8a96a3;
+  font-weight: 400;
+}
+
+.footer-copy-message {
+  flex-basis: 100%;
+  color: #1f6f63;
+  font-size: 12px;
+  text-align: center;
+}
+
 .sidebar {
   display: flex;
   flex-direction: column;
@@ -894,5 +956,14 @@ button:disabled {
   .popup-preview-button,
   .generic-preview {
     height: clamp(170px, 24vh, 220px);
+  }
+
+  .app-footer {
+    position: static;
+    justify-self: center;
+    margin: 8px auto 12px;
+    max-width: calc(100vw - 16px);
+    border-radius: 8px;
+    transform: none;
   }
 }
